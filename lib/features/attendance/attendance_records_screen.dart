@@ -7,6 +7,63 @@ import 'package:permission_handler/permission_handler.dart';
 import 'package:file_picker/file_picker.dart';
 import '../attendance/repository/attendance_repository.dart';
 
+// ─── Brand palette ────────────────────────────────────────────────────────────
+class _Brand {
+  static const tealDark = Color(0xFF085041);
+  static const tealMid = Color(0xFF0F6E56);
+  static const teal = Color(0xFF1D9E75);
+  static const tealLight = Color(0xFF5DCAA5);
+  static const tealSurf = Color(0xFFEAF8F3);
+  static const tealBorder = Color(0xFF9FE1CB);
+
+  static const blueSurf = Color(0xFFE6F1FB);
+  static const blueText = Color(0xFF185FA5);
+
+  static const purpleSurf = Color(0xFFEEEDFE);
+  static const purpleText = Color(0xFF534AB7);
+
+  static const pinkSurf = Color(0xFFFBEAF0);
+  static const pinkText = Color(0xFF993556);
+
+  static const greenSurf = Color(0xFFEAF3DE);
+  static const greenText = Color(0xFF3B6D11);
+
+  static const amberSurf = Color(0xFFFAEEDA);
+  static const amberText = Color(0xFF854F0B);
+
+  static const graySurf = Color(0xFFF1EFE8);
+  static const grayText = Color(0xFF444441);
+
+  static const redSurf = Color(0xFFFCEBEB);
+  static const redText = Color(0xFFA32D2D);
+  static const redBorder = Color(0xFFF09595);
+}
+
+// ─── Reusable Rounded Input Field Style ───────────────────────────
+InputDecoration _buildInputDecoration({
+  required String labelText,
+  Widget? prefixIcon,
+}) {
+  return InputDecoration(
+    labelText: labelText,
+    labelStyle: const TextStyle(fontSize: 13, color: Colors.black54),
+    prefixIcon: prefixIcon,
+    contentPadding: const EdgeInsets.symmetric(horizontal: 14, vertical: 12),
+    filled: true,
+    fillColor: Colors.white,
+    enabledBorder: OutlineInputBorder(
+      borderRadius: BorderRadius.circular(12),
+      borderSide: BorderSide(color: Colors.grey.shade200, width: 1.2),
+    ),
+    focusedBorder: OutlineInputBorder(
+      borderRadius: BorderRadius.circular(12),
+      borderSide: const BorderSide(color: _Brand.teal, width: 1.5),
+    ),
+    border: OutlineInputBorder(borderRadius: BorderRadius.circular(12)),
+  );
+}
+// ─────────────────────────────────────────────────────────────────────────────
+
 class AttendanceRecordsScreen extends StatefulWidget {
   const AttendanceRecordsScreen({super.key});
 
@@ -65,8 +122,6 @@ class _AttendanceRecordsScreenState extends State<AttendanceRecordsScreen> {
   Future<void> _saveExcelToDevice(List<int> bytes, String fileName) async {
     try {
       if (Platform.isAndroid) {
-        // Request storage permission (Android 10 and below needs WRITE,
-        // Android 11+ needs MANAGE_EXTERNAL_STORAGE for arbitrary paths)
         PermissionStatus status = await Permission.manageExternalStorage
             .request();
         if (!status.isGranted) {
@@ -80,7 +135,7 @@ class _AttendanceRecordsScreenState extends State<AttendanceRecordsScreen> {
                 content: Text(
                   'Storage permission denied. Please allow it in Settings.',
                 ),
-                backgroundColor: Colors.red,
+                backgroundColor: _Brand.redText,
               ),
             );
           }
@@ -88,12 +143,10 @@ class _AttendanceRecordsScreenState extends State<AttendanceRecordsScreen> {
         }
       }
 
-      // Let the user pick a destination folder
       String? selectedDirectory = await FilePicker.platform.getDirectoryPath(
         dialogTitle: 'Choose where to save the Excel file',
       );
 
-      // User cancelled the picker
       if (selectedDirectory == null) return;
 
       final filePath = '$selectedDirectory/$fileName';
@@ -104,7 +157,7 @@ class _AttendanceRecordsScreenState extends State<AttendanceRecordsScreen> {
         ScaffoldMessenger.of(context).showSnackBar(
           SnackBar(
             content: Text('Saved to: $filePath'),
-            backgroundColor: Colors.green,
+            backgroundColor: _Brand.tealMid,
             duration: const Duration(seconds: 5),
           ),
         );
@@ -114,7 +167,7 @@ class _AttendanceRecordsScreenState extends State<AttendanceRecordsScreen> {
         ScaffoldMessenger.of(context).showSnackBar(
           SnackBar(
             content: Text('Failed to save file: $e'),
-            backgroundColor: Colors.red,
+            backgroundColor: _Brand.redText,
           ),
         );
       }
@@ -124,11 +177,10 @@ class _AttendanceRecordsScreenState extends State<AttendanceRecordsScreen> {
   // ─────────────────────────────────────────────────────────────────────────
 
   Future<void> _showExportMonthPicker() async {
-    // Build list of available months from all dates
     final Set<String> availableMonths = {};
     for (final dateStr in _allDatesForSection) {
       final trimmed = dateStr.length > 7 ? dateStr.substring(0, 7) : dateStr;
-      availableMonths.add(trimmed); // 'YYYY-MM'
+      availableMonths.add(trimmed);
     }
     final sortedMonths = availableMonths.toList()..sort();
 
@@ -136,12 +188,13 @@ class _AttendanceRecordsScreenState extends State<AttendanceRecordsScreen> {
       ScaffoldMessenger.of(context).showSnackBar(
         const SnackBar(
           content: Text('No attendance data available to export.'),
+          backgroundColor: _Brand.grayText,
         ),
       );
       return;
     }
 
-    String? pickedMonth = sortedMonths.last; // default to latest month
+    String? pickedMonth = sortedMonths.last;
 
     await showDialog(
       context: context,
@@ -149,9 +202,16 @@ class _AttendanceRecordsScreenState extends State<AttendanceRecordsScreen> {
         return StatefulBuilder(
           builder: (context, setModalState) {
             return AlertDialog(
+              shape: RoundedRectangleBorder(
+                borderRadius: BorderRadius.circular(16),
+              ),
               title: const Text(
                 'Export by Month',
-                style: TextStyle(fontSize: 18, fontWeight: FontWeight.bold),
+                style: TextStyle(
+                  fontSize: 18,
+                  fontWeight: FontWeight.w700,
+                  color: _Brand.tealDark,
+                ),
               ),
               content: Column(
                 mainAxisSize: MainAxisSize.min,
@@ -159,20 +219,15 @@ class _AttendanceRecordsScreenState extends State<AttendanceRecordsScreen> {
                 children: [
                   const Text(
                     'Select a month to export:',
-                    style: TextStyle(color: Colors.grey),
+                    style: TextStyle(color: Colors.black54, fontSize: 13),
                   ),
                   const SizedBox(height: 12),
                   DropdownButtonFormField<String>(
                     value: pickedMonth,
-                    decoration: const InputDecoration(
-                      border: OutlineInputBorder(),
-                      contentPadding: EdgeInsets.symmetric(
-                        horizontal: 12,
-                        vertical: 10,
-                      ),
+                    decoration: _buildInputDecoration(
+                      labelText: 'Month Selection',
                     ),
                     items: sortedMonths.map((m) {
-                      // Format 'YYYY-MM' → 'January 2025'
                       final parts = m.split('-');
                       final dt = DateTime(
                         int.parse(parts[0]),
@@ -188,14 +243,21 @@ class _AttendanceRecordsScreenState extends State<AttendanceRecordsScreen> {
               actions: [
                 TextButton(
                   onPressed: () => Navigator.pop(context),
-                  child: const Text('Cancel'),
+                  child: const Text(
+                    'Cancel',
+                    style: TextStyle(color: Colors.black54),
+                  ),
                 ),
                 ElevatedButton.icon(
-                  icon: const Icon(Icons.file_download),
+                  icon: const Icon(Icons.file_download, size: 18),
                   label: const Text('Export'),
                   style: ElevatedButton.styleFrom(
-                    backgroundColor: Colors.amber.shade800,
+                    backgroundColor: _Brand.tealMid,
                     foregroundColor: Colors.white,
+                    shape: RoundedRectangleBorder(
+                      borderRadius: BorderRadius.circular(10),
+                    ),
+                    elevation: 0,
                   ),
                   onPressed: () {
                     Navigator.pop(context);
@@ -232,34 +294,37 @@ class _AttendanceRecordsScreenState extends State<AttendanceRecordsScreen> {
   }
 
   Future<void> _exportToExcelByMonth(String yearMonth) async {
-    // yearMonth format: 'YYYY-MM'
     final parts = yearMonth.split('-');
     final year = int.parse(parts[0]);
     final month = int.parse(parts[1]);
     final monthLabel = '${_monthName(month)} $year';
 
-    // Filter dates to selected month only
     final monthDates = _allDatesForSection.where((dateStr) {
       final trimmed = dateStr.length > 10 ? dateStr.substring(0, 10) : dateStr;
       return trimmed.startsWith(yearMonth);
     }).toList()..sort();
 
     if (monthDates.isEmpty) {
-      ScaffoldMessenger.of(
-        context,
-      ).showSnackBar(SnackBar(content: Text('No data found for $monthLabel.')));
+      ScaffoldMessenger.of(context).showSnackBar(
+        SnackBar(
+          content: Text('No data found for $monthLabel.'),
+          backgroundColor: _Brand.grayText,
+        ),
+      );
       return;
     }
 
-    // Get student IDs (no HEADER_ entries)
     final studentIds = _filteredStudentIds
         .where((id) => !id.startsWith('HEADER_'))
         .toList();
 
     if (studentIds.isEmpty) {
-      ScaffoldMessenger.of(
-        context,
-      ).showSnackBar(const SnackBar(content: Text('No students found.')));
+      ScaffoldMessenger.of(context).showSnackBar(
+        const SnackBar(
+          content: Text('No students found.'),
+          backgroundColor: _Brand.grayText,
+        ),
+      );
       return;
     }
 
@@ -270,9 +335,7 @@ class _AttendanceRecordsScreenState extends State<AttendanceRecordsScreen> {
       Sheet sheet = excel['Attendance'];
       excel.delete('Sheet1');
 
-      // ── Row 0: Big title "Month of January 2025" merged across all columns
-      final totalCols =
-          1 + monthDates.length + 2; // name + dates + present + absent
+      final totalCols = 1 + monthDates.length + 2;
       sheet.appendRow([
         TextCellValue('Month of $monthLabel'),
         ...List.filled(totalCols - 1, TextCellValue('')),
@@ -286,16 +349,16 @@ class _AttendanceRecordsScreenState extends State<AttendanceRecordsScreen> {
           .cellStyle = CellStyle(
         bold: true,
         fontSize: 14,
-        backgroundColorHex: ExcelColor.fromHexString('#FF8F00'),
+        backgroundColorHex: ExcelColor.fromHexString(
+          '#0F6E56',
+        ), // Brand Teal Mid
         fontColorHex: ExcelColor.fromHexString('#FFFFFF'),
         horizontalAlign: HorizontalAlign.Center,
       );
 
-      // ── Row 1: Column headers — Name | 01 | 02 | 03 ... | Present | Absent
       List<CellValue> headers = [
         TextCellValue('Student Name'),
         ...monthDates.map((d) {
-          // Extract just the day number: '2025-01-03' → '03'
           final day = d.length >= 10 ? d.substring(8, 10) : d;
           return TextCellValue(day);
         }),
@@ -309,15 +372,14 @@ class _AttendanceRecordsScreenState extends State<AttendanceRecordsScreen> {
             .cell(CellIndex.indexByColumnRow(columnIndex: i, rowIndex: 1))
             .cellStyle = CellStyle(
           bold: true,
-          backgroundColorHex: ExcelColor.fromHexString('#FFF3E0'),
-          fontColorHex: ExcelColor.fromHexString('#E65100'),
+          backgroundColorHex: ExcelColor.fromHexString('#EAF8F3'), // Teal Surf
+          fontColorHex: ExcelColor.fromHexString('#085041'), // Teal Dark
           horizontalAlign: i == 0
               ? HorizontalAlign.Left
               : HorizontalAlign.Center,
         );
       }
 
-      // ── Data rows
       int rowIndex = 2;
       bool isAlternate = false;
 
@@ -345,8 +407,7 @@ class _AttendanceRecordsScreenState extends State<AttendanceRecordsScreen> {
         row.add(IntCellValue(absentCount));
         sheet.appendRow(row);
 
-        // Alternating row background
-        final rowBg = isAlternate ? '#FFF8E1' : '#FFFFFF';
+        final rowBg = isAlternate ? '#F9FBFB' : '#FFFFFF';
         for (int i = 0; i < row.length; i++) {
           final cell = sheet.cell(
             CellIndex.indexByColumnRow(columnIndex: i, rowIndex: rowIndex),
@@ -363,17 +424,17 @@ class _AttendanceRecordsScreenState extends State<AttendanceRecordsScreen> {
           cell.cellStyle = CellStyle(
             backgroundColorHex: ExcelColor.fromHexString(
               isPresent
-                  ? '#E8F5E9'
+                  ? '#EAF8F3'
                   : isAbsent
-                  ? '#FFEBEE'
+                  ? '#FCEBEB'
                   : rowBg,
             ),
             fontColorHex: ExcelColor.fromHexString(
               isPresent
-                  ? '#2E7D32'
+                  ? '#0F6E56'
                   : isAbsent
-                  ? '#C62828'
-                  : '#212121',
+                  ? '#A32D2D'
+                  : '#333333',
             ),
             horizontalAlign: i == 0
                 ? HorizontalAlign.Left
@@ -381,7 +442,6 @@ class _AttendanceRecordsScreenState extends State<AttendanceRecordsScreen> {
           );
         }
 
-        // Bold + color the totals columns
         sheet
             .cell(
               CellIndex.indexByColumnRow(
@@ -391,7 +451,7 @@ class _AttendanceRecordsScreenState extends State<AttendanceRecordsScreen> {
             )
             .cellStyle = CellStyle(
           bold: true,
-          fontColorHex: ExcelColor.fromHexString('#1B5E20'),
+          fontColorHex: ExcelColor.fromHexString('#0F6E56'),
           backgroundColorHex: ExcelColor.fromHexString(rowBg),
           horizontalAlign: HorizontalAlign.Center,
         );
@@ -404,7 +464,7 @@ class _AttendanceRecordsScreenState extends State<AttendanceRecordsScreen> {
             )
             .cellStyle = CellStyle(
           bold: true,
-          fontColorHex: ExcelColor.fromHexString('#B71C1C'),
+          fontColorHex: ExcelColor.fromHexString('#A32D2D'),
           backgroundColorHex: ExcelColor.fromHexString(rowBg),
           horizontalAlign: HorizontalAlign.Center,
         );
@@ -413,15 +473,13 @@ class _AttendanceRecordsScreenState extends State<AttendanceRecordsScreen> {
         rowIndex++;
       }
 
-      // ── Column widths
-      sheet.setColumnWidth(0, 30.0); // Name column
+      sheet.setColumnWidth(0, 30.0);
       for (int i = 1; i <= monthDates.length; i++) {
-        sheet.setColumnWidth(i, 6.0); // Day columns narrow
+        sheet.setColumnWidth(i, 6.0);
       }
-      sheet.setColumnWidth(monthDates.length + 1, 10.0); // Present
-      sheet.setColumnWidth(monthDates.length + 2, 10.0); // Absent
+      sheet.setColumnWidth(monthDates.length + 1, 10.0);
+      sheet.setColumnWidth(monthDates.length + 2, 10.0);
 
-      // ── Encode & save via folder picker
       final bytes = excel.encode();
 
       if (bytes != null) {
@@ -437,9 +495,12 @@ class _AttendanceRecordsScreenState extends State<AttendanceRecordsScreen> {
       }
     } catch (e) {
       if (mounted) {
-        ScaffoldMessenger.of(
-          context,
-        ).showSnackBar(SnackBar(content: Text('Export failed: $e')));
+        ScaffoldMessenger.of(context).showSnackBar(
+          SnackBar(
+            content: Text('Export failed: $e'),
+            backgroundColor: _Brand.redText,
+          ),
+        );
       }
     } finally {
       if (mounted) setState(() => _isExporting = false);
@@ -496,15 +557,13 @@ class _AttendanceRecordsScreenState extends State<AttendanceRecordsScreen> {
     return _allDatesForSection.where((dateStr) {
       DateTime? recordDate;
       try {
-        // Handle both 'YYYY-MM-DD' and 'YYYY-MM-DD HH:MM:SS' formats
         recordDate = DateTime.parse(
           dateStr.length > 10 ? dateStr.substring(0, 10) : dateStr,
         );
       } catch (_) {
-        return true; // Don't filter out unparseable dates
+        return true;
       }
 
-      // Normalize to date-only (strip time)
       final from = _fromDate != null
           ? DateTime(_fromDate!.year, _fromDate!.month, _fromDate!.day)
           : null;
@@ -518,7 +577,7 @@ class _AttendanceRecordsScreenState extends State<AttendanceRecordsScreen> {
       );
 
       if (from != null && record.isBefore(from)) return false;
-      if (to != null && record.isAfter(to)) return false; // inclusive
+      if (to != null && record.isAfter(to)) return false;
       return true;
     }).toList();
   }
@@ -599,119 +658,6 @@ class _AttendanceRecordsScreenState extends State<AttendanceRecordsScreen> {
     return list;
   }
 
-  Future<void> _exportToExcel() async {
-    if (_filteredDates.isEmpty || _filteredStudentIds.isEmpty) {
-      ScaffoldMessenger.of(context).showSnackBar(
-        const SnackBar(content: Text('No data available to export.')),
-      );
-      return;
-    }
-
-    setState(() => _isExporting = true);
-
-    try {
-      var excel = Excel.createExcel();
-      Sheet sheet = excel['Attendance Export'];
-      excel.delete('Sheet1');
-
-      List<CellValue> headers = [
-        TextCellValue('Student Name'),
-        ..._filteredDates.map((d) => TextCellValue(d)),
-        TextCellValue('Total Present'),
-        TextCellValue('Total Absent'),
-      ];
-      sheet.appendRow(headers);
-
-      for (int i = 0; i < headers.length; i++) {
-        sheet
-            .cell(CellIndex.indexByColumnRow(columnIndex: i, rowIndex: 0))
-            .cellStyle = CellStyle(
-          bold: true,
-          backgroundColorHex: ExcelColor.fromHexString('#FF8F00'),
-          fontColorHex: ExcelColor.fromHexString('#FFFFFF'),
-        );
-      }
-
-      int currentRowIndex = 1;
-      for (String studentId in _filteredStudentIds) {
-        if (studentId.startsWith('HEADER_')) {
-          String headerLabel = studentId == 'HEADER_BOYS'
-              ? 'Boys:'
-              : (studentId == 'HEADER_GIRLS' ? 'Girls:' : 'Unassigned:');
-
-          List<CellValue> separatorRow = [TextCellValue(headerLabel)];
-          for (int d = 0; d < _filteredDates.length + 2; d++) {
-            separatorRow.add(TextCellValue(''));
-          }
-          sheet.appendRow(separatorRow);
-
-          for (int i = 0; i < headers.length; i++) {
-            sheet
-                .cell(
-                  CellIndex.indexByColumnRow(
-                    columnIndex: i,
-                    rowIndex: currentRowIndex,
-                  ),
-                )
-                .cellStyle = CellStyle(
-              bold: true,
-              backgroundColorHex: ExcelColor.fromHexString('#F5F5F5'),
-            );
-          }
-          currentRowIndex++;
-          continue;
-        }
-
-        String name = _studentIdToName[studentId] ?? 'Unknown';
-        int presentCount = 0;
-        int absentCount = 0;
-
-        List<CellValue> row = [TextCellValue(name)];
-
-        for (String date in _filteredDates) {
-          String status = _matrixData[studentId]?[date] ?? '-';
-          if (status == 'PRESENT') presentCount++;
-          if (status == 'ABSENT') absentCount++;
-          String shortStatus = status == 'PRESENT'
-              ? 'P'
-              : (status == 'ABSENT' ? 'A' : '-');
-          row.add(TextCellValue(shortStatus));
-        }
-
-        row.add(IntCellValue(presentCount));
-        row.add(IntCellValue(absentCount));
-        sheet.appendRow(row);
-        currentRowIndex++;
-      }
-
-      for (int i = 0; i < headers.length; i++) {
-        sheet.setColumnWidth(i, i == 0 ? 30.0 : 14.0);
-      }
-
-      final bytes = excel.encode();
-
-      if (bytes != null) {
-        String sectionName = _sections.firstWhere(
-          (s) => s['id'] == _selectedSectionId,
-          orElse: () => {'name': 'Class'},
-        )['name'];
-        String safeName = sectionName.replaceAll(RegExp(r'[^\w\s]+'), '_');
-        String fileName =
-            'Attendance_${safeName}_${DateTime.now().millisecondsSinceEpoch}.xlsx';
-
-        await _saveExcelToDevice(bytes, fileName);
-      }
-    } catch (e) {
-      if (mounted) {
-        ScaffoldMessenger.of(context).showSnackBar(
-          SnackBar(content: Text('Failed to generate Excel file: $e')),
-        );
-      }
-    } finally {
-      if (mounted) setState(() => _isExporting = false);
-    }
-  }
-
   Future<void> _showDateFilterModal() async {
     DateTime? tempFrom = _fromDate;
     DateTime? tempTo = _toDate;
@@ -722,21 +668,40 @@ class _AttendanceRecordsScreenState extends State<AttendanceRecordsScreen> {
         return StatefulBuilder(
           builder: (context, setModalState) {
             return AlertDialog(
+              shape: RoundedRectangleBorder(
+                borderRadius: BorderRadius.circular(16),
+              ),
               title: const Text(
                 'Filter by Date Range',
-                style: TextStyle(fontSize: 18, fontWeight: FontWeight.bold),
+                style: TextStyle(
+                  fontSize: 18,
+                  fontWeight: FontWeight.w700,
+                  color: _Brand.tealDark,
+                ),
               ),
               content: Column(
                 mainAxisSize: MainAxisSize.min,
                 children: [
                   ListTile(
-                    title: const Text('From Date'),
+                    shape: RoundedRectangleBorder(
+                      borderRadius: BorderRadius.circular(10),
+                    ),
+                    title: const Text(
+                      'From Date',
+                      style: TextStyle(
+                        fontSize: 14,
+                        fontWeight: FontWeight.w500,
+                      ),
+                    ),
                     subtitle: Text(
                       tempFrom != null
                           ? tempFrom!.toIso8601String().split('T')[0]
                           : 'Not set',
                     ),
-                    trailing: const Icon(Icons.edit_calendar_rounded),
+                    trailing: const Icon(
+                      Icons.edit_calendar_rounded,
+                      color: _Brand.teal,
+                    ),
                     onTap: () async {
                       final picked = await showDatePicker(
                         context: context,
@@ -748,14 +713,27 @@ class _AttendanceRecordsScreenState extends State<AttendanceRecordsScreen> {
                         setModalState(() => tempFrom = picked);
                     },
                   ),
+                  const Divider(height: 1),
                   ListTile(
-                    title: const Text('To Date'),
+                    shape: RoundedRectangleBorder(
+                      borderRadius: BorderRadius.circular(10),
+                    ),
+                    title: const Text(
+                      'To Date',
+                      style: TextStyle(
+                        fontSize: 14,
+                        fontWeight: FontWeight.w500,
+                      ),
+                    ),
                     subtitle: Text(
                       tempTo != null
                           ? tempTo!.toIso8601String().split('T')[0]
                           : 'Not set',
                     ),
-                    trailing: const Icon(Icons.edit_calendar_rounded),
+                    trailing: const Icon(
+                      Icons.edit_calendar_rounded,
+                      color: _Brand.teal,
+                    ),
                     onTap: () async {
                       final picked = await showDatePicker(
                         context: context,
@@ -771,12 +749,19 @@ class _AttendanceRecordsScreenState extends State<AttendanceRecordsScreen> {
               actions: [
                 TextButton(
                   onPressed: () => Navigator.pop(context),
-                  child: const Text('Cancel'),
+                  child: const Text(
+                    'Cancel',
+                    style: TextStyle(color: Colors.black54),
+                  ),
                 ),
                 ElevatedButton(
                   style: ElevatedButton.styleFrom(
-                    backgroundColor: Colors.amber.shade800,
+                    backgroundColor: _Brand.tealMid,
                     foregroundColor: Colors.white,
+                    shape: RoundedRectangleBorder(
+                      borderRadius: BorderRadius.circular(10),
+                    ),
+                    elevation: 0,
                   ),
                   onPressed: () {
                     setState(() {
@@ -793,8 +778,6 @@ class _AttendanceRecordsScreenState extends State<AttendanceRecordsScreen> {
         );
       },
     );
-
-    if (mounted) setState(() {});
   }
 
   @override
@@ -803,14 +786,30 @@ class _AttendanceRecordsScreenState extends State<AttendanceRecordsScreen> {
     final activeStudentIds = _filteredStudentIds;
 
     return Scaffold(
-      backgroundColor: Colors.grey.shade50,
+      backgroundColor: Colors.white,
+      // ─── FIX: Prevents the keyboard from shrinking the view and causing a 60px overflow ───
+      resizeToAvoidBottomInset: false,
       appBar: AppBar(
         title: const Text(
           'Attendance Logs Matrix',
-          style: TextStyle(fontWeight: FontWeight.bold, fontSize: 18),
+          style: TextStyle(
+            fontWeight: FontWeight.w700,
+            fontSize: 18,
+            color: Colors.black87,
+          ),
         ),
-        backgroundColor: Colors.amber.shade800,
-        foregroundColor: Colors.white,
+        backgroundColor: Colors.white,
+        elevation: 0,
+        surfaceTintColor: Colors.transparent,
+        iconTheme: const IconThemeData(color: Colors.black87),
+        bottom: PreferredSize(
+          preferredSize: const Size.fromHeight(0.5),
+          child: Divider(
+            height: 0.5,
+            thickness: 0.5,
+            color: Colors.grey.shade200,
+          ),
+        ),
         actions: [
           if (_isExporting)
             const Padding(
@@ -819,31 +818,41 @@ class _AttendanceRecordsScreenState extends State<AttendanceRecordsScreen> {
                 width: 20,
                 height: 20,
                 child: CircularProgressIndicator(
-                  color: Colors.white,
+                  color: _Brand.teal,
                   strokeWidth: 2,
                 ),
               ),
             )
           else
-            IconButton(
-              icon: const Icon(Icons.file_download),
-              onPressed: _showExportMonthPicker,
+            Padding(
+              padding: const EdgeInsets.only(right: 6),
+              child: IconButton(
+                icon: const Icon(
+                  Icons.file_download_outlined,
+                  color: _Brand.tealMid,
+                ),
+                tooltip: 'Export Matrix Data',
+                onPressed: _showExportMonthPicker,
+              ),
             ),
         ],
       ),
       body: Column(
         children: [
+          // Inside build method, replace your Filter Container with this:
           Container(
-            padding: const EdgeInsets.all(16.0),
+            padding: const EdgeInsets.symmetric(
+              horizontal: 16.0,
+              vertical: 8.0,
+            ), // Tightened vertical padding
             color: Colors.white,
             child: Column(
               children: [
                 DropdownButtonFormField<String>(
-                  decoration: const InputDecoration(
+                  decoration: _buildInputDecoration(
                     labelText: 'Select Class/Section',
-                    border: OutlineInputBorder(),
                   ),
-                  initialValue: _selectedSectionId,
+                  value: _selectedSectionId,
                   items: _sections.map((sec) {
                     return DropdownMenuItem(
                       value: sec['id'] as String,
@@ -859,24 +868,26 @@ class _AttendanceRecordsScreenState extends State<AttendanceRecordsScreen> {
                     }
                   },
                 ),
-                const SizedBox(height: 12),
+                const SizedBox(height: 8), // Reduced gap
                 TextField(
-                  decoration: const InputDecoration(
+                  decoration: _buildInputDecoration(
                     labelText: 'Search Student Name...',
-                    prefixIcon: Icon(Icons.search),
-                    border: OutlineInputBorder(),
+                    prefixIcon: const Icon(
+                      Icons.search_rounded,
+                      size: 18,
+                      color: Colors.black38,
+                    ),
                   ),
                   onChanged: (val) => setState(() => _searchQuery = val),
                 ),
-                const SizedBox(height: 12),
+                const SizedBox(height: 8), // Reduced gap
                 Row(
                   children: [
                     Expanded(
                       child: DropdownButtonFormField<String>(
                         value: _selectedGenderFilter,
-                        decoration: const InputDecoration(
+                        decoration: _buildInputDecoration(
                           labelText: 'Gender View',
-                          border: OutlineInputBorder(),
                         ),
                         items: const [
                           DropdownMenuItem(
@@ -896,50 +907,48 @@ class _AttendanceRecordsScreenState extends State<AttendanceRecordsScreen> {
                             setState(() => _selectedGenderFilter = val!),
                       ),
                     ),
-                    const SizedBox(width: 12),
+                    const SizedBox(width: 8), // Reduced gap
                     Expanded(
                       child: DropdownButtonFormField<String>(
                         value: _sortBy,
-                        decoration: const InputDecoration(
-                          labelText: 'Grouping Style',
-                          border: OutlineInputBorder(),
+                        decoration: _buildInputDecoration(
+                          labelText: 'Grouping',
                         ),
                         items: const [
                           DropdownMenuItem(
                             value: 'gender',
-                            child: Text('Grouped (Boys / Girls)'),
+                            child: Text('Grouped'),
                           ),
-                          DropdownMenuItem(
-                            value: 'name',
-                            child: Text('Plain Alphabetical'),
-                          ),
+                          DropdownMenuItem(value: 'name', child: Text('Plain')),
                         ],
                         onChanged: (val) => setState(() => _sortBy = val!),
                       ),
                     ),
                   ],
                 ),
-                const SizedBox(height: 12),
+                const SizedBox(height: 8), // Reduced gap
                 Row(
                   children: [
                     Expanded(
                       child: OutlinedButton.icon(
-                        icon: const Icon(Icons.date_range),
+                        icon: const Icon(
+                          Icons.calendar_today_rounded,
+                          size: 14,
+                        ),
                         label: Text(
                           _fromDate == null && _toDate == null
-                              ? 'Filter by Date Range'
-                              : '${_fromDate != null ? _fromDate!.toIso8601String().split('T')[0] : 'Start'}'
-                                    ' → '
-                                    '${_toDate != null ? _toDate!.toIso8601String().split('T')[0] : 'End'}',
+                              ? 'Date Range'
+                              : '${_fromDate != null ? _fromDate!.toIso8601String().split('T')[0] : 'Start'} → ${_toDate != null ? _toDate!.toIso8601String().split('T')[0] : 'End'}',
                           overflow: TextOverflow.ellipsis,
+                          style: const TextStyle(fontSize: 12),
                         ),
                         style: OutlinedButton.styleFrom(
                           padding: const EdgeInsets.symmetric(
-                            vertical: 16,
-                          ).copyWith(left: 12),
-                          alignment: Alignment.centerLeft,
-                          shape: const RoundedRectangleBorder(
-                            borderRadius: BorderRadius.zero,
+                            vertical: 12,
+                            horizontal: 12,
+                          ),
+                          shape: RoundedRectangleBorder(
+                            borderRadius: BorderRadius.circular(10),
                           ),
                         ),
                         onPressed: _showDateFilterModal,
@@ -950,15 +959,8 @@ class _AttendanceRecordsScreenState extends State<AttendanceRecordsScreen> {
                       IconButton(
                         icon: const Icon(
                           Icons.clear_rounded,
-                          color: Colors.redAccent,
-                        ),
-                        tooltip: 'Clear Date Range',
-                        style: IconButton.styleFrom(
-                          side: BorderSide(color: Colors.grey.shade300),
-                          padding: const EdgeInsets.all(14),
-                          shape: const RoundedRectangleBorder(
-                            borderRadius: BorderRadius.zero,
-                          ),
+                          size: 18,
+                          color: _Brand.redText,
                         ),
                         onPressed: () => setState(() {
                           _fromDate = null;
@@ -971,11 +973,19 @@ class _AttendanceRecordsScreenState extends State<AttendanceRecordsScreen> {
               ],
             ),
           ),
+          Divider(height: 1, thickness: 1, color: Colors.grey.shade100),
           Expanded(
             child: _isLoading
-                ? const Center(child: CircularProgressIndicator())
+                ? const Center(
+                    child: CircularProgressIndicator(color: _Brand.teal),
+                  )
                 : activeStudentIds.isEmpty
-                ? const Center(child: Text('No records found.'))
+                ? const Center(
+                    child: Text(
+                      'No records found.',
+                      style: TextStyle(color: Colors.black45),
+                    ),
+                  )
                 : InteractiveScrollGrid(
                     activeDates: activeDates,
                     activeStudentIds: activeStudentIds,
@@ -1005,8 +1015,8 @@ class InteractiveScrollGrid extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    const double rowHeight = 44.0;
-    const double headingHeight = 50.0;
+    const double rowHeight = 46.0;
+    const double headingHeight = 48.0;
 
     return SingleChildScrollView(
       scrollDirection: Axis.vertical,
@@ -1017,45 +1027,51 @@ class InteractiveScrollGrid extends StatelessWidget {
           Container(
             decoration: BoxDecoration(
               border: Border(
-                right: BorderSide(color: Colors.grey.shade300, width: 2),
+                right: BorderSide(color: Colors.grey.shade200, width: 1.5),
               ),
             ),
             child: DataTable(
-              headingRowColor: WidgetStateProperty.all(Colors.grey.shade100),
+              headingRowColor: WidgetStateProperty.all(_Brand.tealSurf),
               headingRowHeight: headingHeight,
               dataRowHeight: rowHeight,
               horizontalMargin: 16,
               columnSpacing: 0,
-              border: TableBorder.all(color: Colors.grey.shade200),
+              border: TableBorder.all(color: Colors.grey.shade100, width: 0.5),
               columns: const [
                 DataColumn(
                   label: Text(
                     'Student Name',
-                    style: TextStyle(fontWeight: FontWeight.bold),
+                    style: TextStyle(
+                      fontWeight: FontWeight.w700,
+                      color: _Brand.tealDark,
+                      fontSize: 13,
+                    ),
                   ),
                 ),
               ],
               rows: activeStudentIds.map((studentId) {
                 if (studentId.startsWith('HEADER_')) {
                   String label = studentId == 'HEADER_BOYS'
-                      ? 'Boys:'
-                      : (studentId == 'HEADER_GIRLS'
-                            ? 'Girls:'
-                            : 'Unassigned:');
-                  Color labelColor = studentId == 'HEADER_BOYS'
-                      ? Colors.blue.shade800
-                      : Colors.pink.shade800;
+                      ? 'Boys'
+                      : (studentId == 'HEADER_GIRLS' ? 'Girls' : 'Unassigned');
+                  Color bgSurface = studentId == 'HEADER_BOYS'
+                      ? _Brand.blueSurf
+                      : _Brand.pinkSurf;
+                  Color textColor = studentId == 'HEADER_BOYS'
+                      ? _Brand.blueText
+                      : _Brand.pinkText;
 
                   return DataRow(
-                    color: WidgetStateProperty.all(Colors.grey.shade100),
+                    color: WidgetStateProperty.all(bgSurface),
                     cells: [
                       DataCell(
                         Text(
                           label,
                           style: TextStyle(
-                            fontWeight: FontWeight.bold,
-                            color: labelColor,
-                            fontSize: 14,
+                            fontWeight: FontWeight.w700,
+                            color: textColor,
+                            fontSize: 12,
+                            letterSpacing: 0.3,
                           ),
                         ),
                       ),
@@ -1065,7 +1081,15 @@ class InteractiveScrollGrid extends StatelessWidget {
 
                 return DataRow(
                   cells: [
-                    DataCell(Text(studentIdToName[studentId] ?? 'Unknown')),
+                    DataCell(
+                      Text(
+                        studentIdToName[studentId] ?? 'Unknown',
+                        style: const TextStyle(
+                          fontSize: 13,
+                          color: Colors.black87,
+                        ),
+                      ),
+                    ),
                   ],
                 );
               }).toList(),
@@ -1077,44 +1101,64 @@ class InteractiveScrollGrid extends StatelessWidget {
             child: SingleChildScrollView(
               scrollDirection: Axis.horizontal,
               child: DataTable(
-                headingRowColor: WidgetStateProperty.all(Colors.grey.shade100),
+                headingRowColor: WidgetStateProperty.all(_Brand.tealSurf),
                 headingRowHeight: headingHeight,
                 dataRowHeight: rowHeight,
                 horizontalMargin: 12,
-                columnSpacing: 24,
-                border: TableBorder.all(color: Colors.grey.shade200),
+                columnSpacing: 20,
+                border: TableBorder.all(
+                  color: Colors.grey.shade100,
+                  width: 0.5,
+                ),
                 columns: [
                   ...activeDates.map(
                     (date) => DataColumn(
-                      label: Text(
-                        date,
-                        style: const TextStyle(fontWeight: FontWeight.bold),
+                      label: Center(
+                        child: Text(
+                          date.length >= 10
+                              ? date.substring(5, 10)
+                              : date, // Condensed MM-DD view
+                          style: const TextStyle(
+                            fontWeight: FontWeight.w700,
+                            color: _Brand.tealDark,
+                            fontSize: 13,
+                          ),
+                        ),
                       ),
                     ),
                   ),
                   const DataColumn(
-                    label: Text(
-                      'Present',
-                      style: TextStyle(
-                        fontWeight: FontWeight.bold,
-                        color: Colors.teal,
+                    label: Center(
+                      child: Text(
+                        'Pres.',
+                        style: TextStyle(
+                          fontWeight: FontWeight.w700,
+                          color: _Brand.tealMid,
+                          fontSize: 13,
+                        ),
                       ),
                     ),
                   ),
                   const DataColumn(
-                    label: Text(
-                      'Absent',
-                      style: TextStyle(
-                        fontWeight: FontWeight.bold,
-                        color: Colors.red,
+                    label: Center(
+                      child: Text(
+                        'Abs.',
+                        style: TextStyle(
+                          fontWeight: FontWeight.w700,
+                          color: _Brand.redText,
+                          fontSize: 13,
+                        ),
                       ),
                     ),
                   ),
                 ],
                 rows: activeStudentIds.map((studentId) {
                   if (studentId.startsWith('HEADER_')) {
+                    Color bgSurface = studentId == 'HEADER_BOYS'
+                        ? _Brand.blueSurf
+                        : _Brand.pinkSurf;
                     return DataRow(
-                      color: WidgetStateProperty.all(Colors.grey.shade100),
+                      color: WidgetStateProperty.all(bgSurface),
                       cells: [
                         ...activeDates.map(
                           (_) => const DataCell(SizedBox.shrink()),
@@ -1130,17 +1174,17 @@ class InteractiveScrollGrid extends StatelessWidget {
 
                   final dateCells = activeDates.map((date) {
                     final status = matrixData[studentId]?[date] ?? '-';
-                    Color txtColor = Colors.grey;
+                    Color txtColor = Colors.black38;
                     Color bgColor = Colors.transparent;
 
                     if (status == 'PRESENT') {
                       presentSum++;
-                      txtColor = Colors.green.shade800;
-                      bgColor = Colors.green.shade50;
+                      txtColor = _Brand.tealDark;
+                      bgColor = _Brand.tealSurf;
                     } else if (status == 'ABSENT') {
                       absentSum++;
-                      txtColor = Colors.red.shade800;
-                      bgColor = Colors.red.shade50;
+                      txtColor = _Brand.redText;
+                      bgColor = _Brand.redSurf;
                     }
 
                     return DataCell(
@@ -1154,8 +1198,9 @@ class InteractiveScrollGrid extends StatelessWidget {
                               ? 'A'
                               : '-',
                           style: TextStyle(
-                            fontWeight: FontWeight.bold,
+                            fontWeight: FontWeight.w700,
                             color: txtColor,
+                            fontSize: 12,
                           ),
                         ),
                       ),
@@ -1170,8 +1215,9 @@ class InteractiveScrollGrid extends StatelessWidget {
                           child: Text(
                             '$presentSum',
                             style: const TextStyle(
-                              fontWeight: FontWeight.bold,
-                              color: Colors.teal,
+                              fontWeight: FontWeight.w700,
+                              color: _Brand.tealDark,
+                              fontSize: 13,
                             ),
                           ),
                         ),
@@ -1181,8 +1227,9 @@ class InteractiveScrollGrid extends StatelessWidget {
                           child: Text(
                             '$absentSum',
                             style: const TextStyle(
-                              fontWeight: FontWeight.bold,
-                              color: Colors.red,
+                              fontWeight: FontWeight.w700,
+                              color: _Brand.redText,
+                              fontSize: 13,
                             ),
                           ),
                         ),

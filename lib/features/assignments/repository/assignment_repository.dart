@@ -53,7 +53,7 @@ class AssignmentRepository {
     required String type,
     required String dueDate,
     required int maxScore,
-    required int quarterNumber, // <-- ADDED THIS
+    required int quarterNumber,
   }) async {
     final db = await _dbService.database;
     final assignmentId = const Uuid().v4();
@@ -67,7 +67,7 @@ class AssignmentRepository {
         'type': type,
         'due_date': dueDate,
         'max_score': maxScore,
-        'quarter_number': quarterNumber, // <-- ADDED THIS
+        'quarter_number': quarterNumber,
       });
 
       // Fetch all students enrolled in this class
@@ -125,7 +125,7 @@ class AssignmentRepository {
     );
   }
 
-  // 5. Update a student's submission status (UPGRADED to handle late enrollees)
+  // 5. Update a student's submission status
   Future<void> updateSubmissionStatus({
     required String assignmentId,
     required String studentId,
@@ -134,7 +134,6 @@ class AssignmentRepository {
   }) async {
     final db = await _dbService.database;
 
-    // Check if a submission row already exists for this student + assignment
     final existing = await db.query(
       'submissions',
       where: 'assignment_id = ? AND student_id = ?',
@@ -142,7 +141,6 @@ class AssignmentRepository {
     );
 
     if (existing.isNotEmpty) {
-      // Update existing row
       await db.update(
         'submissions',
         {'status': status, 'score': score},
@@ -150,7 +148,6 @@ class AssignmentRepository {
         whereArgs: [existing.first['id']],
       );
     } else {
-      // Create new row instantly (Handles late enrollees automatically)
       await db.insert('submissions', {
         'id': const Uuid().v4(),
         'assignment_id': assignmentId,
@@ -176,15 +173,12 @@ class AssignmentRepository {
     return result.map((row) => row['quarter_number'] as int).toList();
   }
 
-  // 1. Get total average of EACH student in a specific quarter (Filterable)
-  // 1. Get average of EACH student per quarter AND their overall cumulative average
   Future<List<Map<String, dynamic>>> getStudentAveragesPerQuarter({
     required String sectionId,
     required int quarterNumber,
   }) async {
     final db = await _dbService.database;
 
-    // Using CTEs (WITH clauses) to calculate Quarter and Overall stats cleanly in one pass
     return await db.rawQuery(
       '''
       WITH QuarterStats AS (
@@ -232,13 +226,11 @@ class AssignmentRepository {
     );
   }
 
-  // 2. Get Class Summary Metrics: Average of each quarter & Cumulative Average of ALL quarters combined
   Future<Map<String, dynamic>> getClassPerformanceSummary(
     String sectionId,
   ) async {
     final db = await _dbService.database;
 
-    // Average per distinct quarter
     final List<Map<String, dynamic>> quarterAverages = await db.rawQuery(
       '''
     SELECT 
@@ -252,7 +244,6 @@ class AssignmentRepository {
       [sectionId],
     );
 
-    // Grand Cumulative total across all quarters combined
     final List<Map<String, dynamic>> totalCumulative = await db.rawQuery(
       '''
     SELECT 
@@ -271,11 +262,25 @@ class AssignmentRepository {
           .toDouble();
     }
 
-    return {
-      'quarters':
-          quarterAverages, // Contains list of maps: {'quarter_number': 1, 'class_quarter_average': 84.2}
-      'overall_cumulative':
-          overall, // Single double value of entire school year performance
-    };
+    return {'quarters': quarterAverages, 'overall_cumulative': overall};
+  }
+
+  // 6. Delete Assignment and Cascade Submissions
+  Future<void> deleteAssignment(String assignmentId) async {
+    final db = await _dbService.database;
+    await db.transaction((txn) async {
+      // Delete associated student submissions first
+      await txn.delete(
+        'submissions',
+        where: 'assignment_id = ?',
+        whereArgs: [assignmentId],
+      );
+      // Delete the core assignment record
+      await txn.delete(
+        'assignments',
+        where: 'id = ?',
+        whereArgs: [assignmentId],
+      );
+    });
   }
 }

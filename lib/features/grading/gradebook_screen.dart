@@ -3,6 +3,37 @@ import '../attendance/repository/attendance_repository.dart';
 import './grade_category_screen.dart';
 import './weights_formulas_screen.dart';
 
+// ─── Brand palette ────────────────────────────────────────────────────────────
+class _Brand {
+  static const tealDark = Color(0xFF085041);
+  static const tealMid = Color(0xFF0F6E56);
+  static const teal = Color(0xFF1D9E75);
+  static const tealSurf = Color(0xFFEAF8F3);
+}
+
+// ─── Reusable Input Decoration ────────────────────────────────────────────────
+InputDecoration _buildInputDecoration({
+  required String labelText,
+  Widget? prefixIcon,
+}) {
+  return InputDecoration(
+    labelText: labelText,
+    labelStyle: const TextStyle(fontSize: 13, color: Colors.black54),
+    prefixIcon: prefixIcon,
+    contentPadding: const EdgeInsets.symmetric(horizontal: 14, vertical: 12),
+    filled: true,
+    fillColor: Colors.white,
+    enabledBorder: OutlineInputBorder(
+      borderRadius: BorderRadius.circular(12),
+      borderSide: BorderSide(color: Colors.grey.shade200, width: 1.2),
+    ),
+    focusedBorder: OutlineInputBorder(
+      borderRadius: BorderRadius.circular(12),
+      borderSide: const BorderSide(color: _Brand.teal, width: 1.5),
+    ),
+  );
+}
+
 class GradebookScreen extends StatefulWidget {
   const GradebookScreen({super.key});
 
@@ -11,8 +42,7 @@ class GradebookScreen extends StatefulWidget {
 }
 
 class _GradebookScreenState extends State<GradebookScreen> {
-  final _attendanceRepo =
-      AttendanceRepository(); // Repurposed to read shared sections
+  final _attendanceRepo = AttendanceRepository();
   String? _selectedSectionId;
   List<Map<String, dynamic>> _sections = [];
   bool _isLoading = true;
@@ -64,23 +94,30 @@ class _GradebookScreenState extends State<GradebookScreen> {
   @override
   Widget build(BuildContext context) {
     return Scaffold(
+      backgroundColor: Colors.white,
+      resizeToAvoidBottomInset: false,
       appBar: AppBar(
-        title: const Text('Dynamic Gradebook Engine'),
-        backgroundColor: Colors.teal.shade700,
-        foregroundColor: Colors.white,
+        title: const Text(
+          'Gradebook Engine',
+          style: TextStyle(fontWeight: FontWeight.w700, color: Colors.black87),
+        ),
+        backgroundColor: Colors.white,
+        elevation: 0,
+        surfaceTintColor: Colors.transparent,
       ),
       body: _isLoading
-          ? const Center(child: CircularProgressIndicator())
+          ? const Center(child: CircularProgressIndicator(color: _Brand.teal))
           : Column(
               children: [
-                // Class Selector Row
-                Container(
-                  padding: const EdgeInsets.all(16),
-                  color: Colors.grey.shade100,
+                // Class Selector
+                Padding(
+                  padding: const EdgeInsets.symmetric(
+                    horizontal: 16,
+                    vertical: 8,
+                  ),
                   child: DropdownButtonFormField<String>(
-                    decoration: const InputDecoration(
-                      labelText: 'Class Matrix View',
-                      border: OutlineInputBorder(),
+                    decoration: _buildInputDecoration(
+                      labelText: 'Select Class/Section',
                     ),
                     value: _selectedSectionId,
                     items: _sections
@@ -96,7 +133,7 @@ class _GradebookScreenState extends State<GradebookScreen> {
                   ),
                 ),
 
-                // Activities Quick Links Grid View
+                // Grid View
                 Expanded(
                   child: GridView.count(
                     crossAxisCount: 2,
@@ -125,12 +162,12 @@ class _GradebookScreenState extends State<GradebookScreen> {
                         () => _navigateToCategory('Quiz'),
                       ),
                       _buildSubFeatureCard(
-                        'Major Examinations',
+                        'Major Exams',
                         Icons.workspace_premium,
                         () => _navigateToCategory('Exam'),
                       ),
                       _buildSubFeatureCard(
-                        'Weights & Formulas',
+                        'Formulas',
                         Icons.calculate_rounded,
                         _navigateToWeights,
                       ),
@@ -138,27 +175,38 @@ class _GradebookScreenState extends State<GradebookScreen> {
                   ),
                 ),
 
-                // Export and Calculation Engine Dashboard Dock
+                // Export Dock
                 Container(
                   padding: const EdgeInsets.all(16),
                   decoration: BoxDecoration(
                     color: Colors.white,
                     border: Border(
-                      top: BorderSide(color: Colors.grey.shade300),
+                      top: BorderSide(color: Colors.grey.shade100),
                     ),
                   ),
                   child: Row(
-                    mainAxisAlignment: MainAxisAlignment.spaceBetween,
                     children: [
-                      ElevatedButton.icon(
-                        icon: const Icon(Icons.picture_as_pdf),
-                        label: const Text('Export PDF'),
-                        onPressed: () {},
+                      Expanded(
+                        child: OutlinedButton.icon(
+                          icon: const Icon(Icons.picture_as_pdf, size: 18),
+                          label: const Text('Export PDF'),
+                          onPressed: () {},
+                          style: OutlinedButton.styleFrom(
+                            foregroundColor: _Brand.tealDark,
+                          ),
+                        ),
                       ),
-                      ElevatedButton.icon(
-                        icon: const Icon(Icons.table_view),
-                        label: const Text('Export Excel'),
-                        onPressed: () {},
+                      const SizedBox(width: 12),
+                      Expanded(
+                        child: ElevatedButton.icon(
+                          icon: const Icon(Icons.table_view, size: 18),
+                          label: const Text('Export Excel'),
+                          onPressed: () {},
+                          style: ElevatedButton.styleFrom(
+                            backgroundColor: _Brand.tealMid,
+                            foregroundColor: Colors.white,
+                          ),
+                        ),
                       ),
                     ],
                   ),
@@ -174,17 +222,22 @@ class _GradebookScreenState extends State<GradebookScreen> {
       borderRadius: BorderRadius.circular(12),
       child: Container(
         decoration: BoxDecoration(
-          border: Border.all(color: Colors.grey.shade300),
+          color: _Brand.tealSurf,
           borderRadius: BorderRadius.circular(12),
+          border: Border.all(color: _Brand.teal.withOpacity(0.2)),
         ),
         child: Column(
           mainAxisAlignment: MainAxisAlignment.center,
           children: [
-            Icon(icon, size: 36, color: Colors.teal.shade700),
+            Icon(icon, size: 32, color: _Brand.tealDark),
             const SizedBox(height: 8),
             Text(
               title,
-              style: const TextStyle(fontWeight: FontWeight.bold, fontSize: 14),
+              style: const TextStyle(
+                fontWeight: FontWeight.w600,
+                color: _Brand.tealDark,
+                fontSize: 13,
+              ),
             ),
           ],
         ),

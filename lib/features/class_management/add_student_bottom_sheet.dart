@@ -1,10 +1,17 @@
 import 'package:flutter/material.dart';
-import 'repositories/enrollment_repository.dart'; // Ensure this points to your actual repository file
+import 'repositories/enrollment_repository.dart';
+
+// Consistent Branding
+class _Brand {
+  static const Color teal = Colors.teal;
+  static final Color tealSurf = Colors.teal.shade50;
+  static final Color greySurf = Colors.grey.shade50;
+  static final Color greyBorder = Colors.grey.shade200;
+}
 
 class AddStudentBottomSheet extends StatefulWidget {
   final String sectionId;
-  final VoidCallback
-  onStudentAdded; // Triggers a UI refresh on the parent screen
+  final VoidCallback onStudentAdded;
 
   const AddStudentBottomSheet({
     super.key,
@@ -17,9 +24,7 @@ class AddStudentBottomSheet extends StatefulWidget {
 }
 
 class _AddStudentBottomSheetState extends State<AddStudentBottomSheet> {
-  // TODO: Initialize your repository here
   final _repo = EnrollmentRepository();
-
   final TextEditingController _searchCtrl = TextEditingController();
   List<Map<String, dynamic>> _searchResults = [];
   bool _isSearching = false;
@@ -31,10 +36,13 @@ class _AddStudentBottomSheetState extends State<AddStudentBottomSheet> {
   }
 
   Future<void> _onSearchChanged(String query) async {
-    setState(() => _isSearching = true);
+    if (query.isEmpty) {
+      setState(() => _searchResults = []);
+      return;
+    }
 
+    setState(() => _isSearching = true);
     try {
-      // Execute the dynamic search query
       final results = await _repo.searchUnenrolledStudents(
         widget.sectionId,
         query,
@@ -46,7 +54,7 @@ class _AddStudentBottomSheetState extends State<AddStudentBottomSheet> {
         });
       }
     } catch (e) {
-      debugPrint("Search error: $e");
+      debugPrint("============= SEARCH ERROR: $e =============");
       if (mounted) setState(() => _isSearching = false);
     }
   }
@@ -58,18 +66,15 @@ class _AddStudentBottomSheetState extends State<AddStudentBottomSheet> {
     await _repo.enrollStudent(widget.sectionId, studentId);
 
     if (mounted) {
-      // Clear the search bar and results so they can add another student immediately
       _searchCtrl.clear();
       setState(() => _searchResults.clear());
-
-      // Notify parent screen to update its list
       widget.onStudentAdded();
 
       ScaffoldMessenger.of(context).showSnackBar(
         SnackBar(
           content: Text('$studentName added to class successfully!'),
-          backgroundColor: Colors.green,
-          duration: const Duration(seconds: 2),
+          backgroundColor: _Brand.teal,
+          behavior: SnackBarBehavior.floating,
         ),
       );
     }
@@ -77,79 +82,91 @@ class _AddStudentBottomSheetState extends State<AddStudentBottomSheet> {
 
   @override
   Widget build(BuildContext context) {
-    // Defines a fixed height for the bottom sheet
-    final screenHeight = MediaQuery.of(context).size.height;
-
     return Container(
-      height: screenHeight * 0.7, // Takes up 70% of the screen
-      padding: const EdgeInsets.only(top: 16, left: 16, right: 16),
+      height: MediaQuery.of(context).size.height * 0.75,
+      padding: const EdgeInsets.fromLTRB(20, 12, 20, 20),
       decoration: const BoxDecoration(
         color: Colors.white,
-        borderRadius: BorderRadius.vertical(top: Radius.circular(20)),
+        borderRadius: BorderRadius.vertical(top: Radius.circular(24)),
       ),
       child: Column(
-        crossAxisAlignment: CrossAxisAlignment.start,
         children: [
+          // Drag Handle
+          Container(
+            width: 40,
+            height: 4,
+            margin: const EdgeInsets.fromLTRB(0, 0, 0, 20),
+            decoration: BoxDecoration(
+              color: Colors.grey.shade300,
+              borderRadius: BorderRadius.circular(2),
+            ),
+          ),
+
           // Header
           Row(
             mainAxisAlignment: MainAxisAlignment.spaceBetween,
             children: [
               const Text(
-                'Add Student to Class',
-                style: TextStyle(fontSize: 18, fontWeight: FontWeight.bold),
+                'Add Student',
+                style: TextStyle(fontSize: 18, fontWeight: FontWeight.w700),
               ),
               IconButton(
-                icon: const Icon(Icons.close),
+                icon: const Icon(Icons.close_rounded),
                 onPressed: () => Navigator.pop(context),
               ),
             ],
           ),
-          const SizedBox(height: 12),
+          const SizedBox(height: 16),
 
-          // Dynamic Search Bar
+          // Search Field
           TextField(
             controller: _searchCtrl,
             autofocus: true,
+            onChanged: _onSearchChanged,
             decoration: InputDecoration(
               hintText: 'Search by student name...',
-              prefixIcon: const Icon(Icons.search),
-              suffixIcon: _searchCtrl.text.isNotEmpty
-                  ? IconButton(
-                      icon: const Icon(Icons.clear),
-                      onPressed: () {
-                        _searchCtrl.clear();
-                        _onSearchChanged(''); // Clear results
-                      },
-                    )
-                  : null,
+              prefixIcon: const Icon(Icons.search_rounded, size: 20),
               filled: true,
-              fillColor: Colors.grey.shade100,
+              fillColor: _Brand.greySurf,
               border: OutlineInputBorder(
                 borderRadius: BorderRadius.circular(12),
                 borderSide: BorderSide.none,
               ),
+              contentPadding: const EdgeInsets.symmetric(
+                horizontal: 16,
+                vertical: 14,
+              ),
             ),
-            onChanged:
-                _onSearchChanged, // Triggers the database query instantly
           ),
           const SizedBox(height: 16),
 
-          // Autocomplete Results List
+          // Search Results
           Expanded(
             child: _isSearching
-                ? const Center(child: CircularProgressIndicator())
-                : _searchCtrl.text.isEmpty
-                ? Center(
-                    child: Text(
-                      'Type a name to search the global directory.',
-                      style: TextStyle(color: Colors.grey.shade500),
-                    ),
+                ? const Center(
+                    child: CircularProgressIndicator(color: _Brand.teal),
                   )
                 : _searchResults.isEmpty
                 ? Center(
-                    child: Text(
-                      'No matching unenrolled students found.',
-                      style: TextStyle(color: Colors.grey.shade600),
+                    child: Column(
+                      mainAxisAlignment: MainAxisAlignment.center,
+                      children: [
+                        Icon(
+                          Icons.person_search_outlined,
+                          size: 48,
+                          color: Colors.grey.shade300,
+                        ),
+                        const SizedBox(height: 12),
+                        Text(
+                          _searchCtrl.text.isEmpty
+                              ? 'Enter a name to search'
+                              : 'No students found',
+                          style: TextStyle(
+                            color: Colors.grey.shade500,
+                            fontWeight: FontWeight.w500,
+                          ),
+                        ),
+                      ],
                     ),
                   )
                 : ListView.separated(
@@ -159,28 +176,38 @@ class _AddStudentBottomSheetState extends State<AddStudentBottomSheet> {
                     itemBuilder: (context, index) {
                       final student = _searchResults[index];
                       return ListTile(
+                        contentPadding: const EdgeInsets.symmetric(
+                          horizontal: 4,
+                          vertical: 4,
+                        ),
                         leading: CircleAvatar(
-                          backgroundColor: Colors.teal.shade100,
-                          child: Icon(
-                            Icons.person,
-                            color: Colors.teal.shade700,
+                          backgroundColor: _Brand.tealSurf,
+                          child: Text(
+                            student['full_name'][0].toUpperCase(),
+                            style: const TextStyle(
+                              color: _Brand.teal,
+                              fontWeight: FontWeight.bold,
+                            ),
                           ),
                         ),
                         title: Text(
                           student['full_name'],
-                          style: const TextStyle(fontWeight: FontWeight.w600),
-                        ),
-                        trailing: ElevatedButton.icon(
-                          style: ElevatedButton.styleFrom(
-                            backgroundColor: Colors.teal.shade700,
-                            foregroundColor: Colors.white,
+                          style: const TextStyle(
+                            fontWeight: FontWeight.w600,
+                            fontSize: 14,
                           ),
-                          icon: const Icon(Icons.add, size: 18),
-                          label: const Text('Add'),
+                        ),
+                        trailing: TextButton(
                           onPressed: () => _enrollSelectedStudent(
                             student['id'],
                             student['full_name'],
                           ),
+                          style: TextButton.styleFrom(
+                            backgroundColor: _Brand.tealSurf,
+                            foregroundColor: _Brand.teal,
+                            padding: const EdgeInsets.symmetric(horizontal: 16),
+                          ),
+                          child: const Text('Add'),
                         ),
                       );
                     },

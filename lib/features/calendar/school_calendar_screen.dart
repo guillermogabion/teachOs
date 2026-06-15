@@ -4,6 +4,53 @@ import 'package:intl/intl.dart';
 import 'package:uuid/uuid.dart';
 import 'repository/calendar_repository.dart';
 
+// ─── Unified Brand Palette ───────────────────────────────────────────────────
+class _Brand {
+  static const tealDark = Color(0xFF085041);
+  static const tealMid = Color(0xFF0F6E56);
+  static const teal = Color(0xFF1D9E75);
+  static const tealSurf = Color(0xFFEAF8F3);
+  static const charcoal = Color(0xFF1F2937);
+  static const mutedText = Color(0xFF6B7280);
+  static const bgSurface = Color(0xFFF9FAFB);
+  static const amberWarning = Color(0xFFD97706);
+  static const amberSurf = Color(0xFFFEF3C7);
+  static const redText = Color(0xFFDC2626);
+  static const redSurf = Color(0xFFFEE2E2);
+  static const blueAccent = Color(0xFF2563EB);
+  static const blueSurf = Color(0xFFDBEAFE);
+}
+
+// ─── Standardized Input Decoration Helper ────────────────────────────────────
+InputDecoration _buildInputDecoration({
+  required String labelText,
+  Widget? suffix,
+}) {
+  return InputDecoration(
+    labelText: labelText,
+    labelStyle: const TextStyle(
+      fontSize: 13,
+      color: Colors.black54,
+      fontWeight: FontWeight.w500,
+    ),
+    suffix: suffix,
+    contentPadding: const EdgeInsets.symmetric(horizontal: 16, vertical: 14),
+    filled: true,
+    fillColor: Colors.white,
+    enabledBorder: OutlineInputBorder(
+      borderRadius: BorderRadius.circular(12),
+      borderSide: BorderSide(color: Colors.grey.shade200, width: 1.2),
+    ),
+    focusedBorder: OutlineInputBorder(
+      borderRadius: BorderRadius.circular(12),
+      borderSide: const BorderSide(color: _Brand.teal, width: 1.5),
+    ),
+  );
+}
+
+// ============================================================================
+// CORE SCREEN: SCHOOL CALENDAR (HIGH FIDELITY REFRACTOR)
+// ============================================================================
 class SchoolCalendarScreen extends StatefulWidget {
   const SchoolCalendarScreen({super.key});
 
@@ -14,14 +61,11 @@ class SchoolCalendarScreen extends StatefulWidget {
 class _SchoolCalendarScreenState extends State<SchoolCalendarScreen> {
   final _calendarRepo = CalendarRepository();
 
-  // --- UPGRADED CALENDAR STATE ---
   DateTime _focusedDay = DateTime.now();
   DateTime? _selectedDay;
   DateTime? _rangeStart;
   DateTime? _rangeEnd;
   RangeSelectionMode _rangeSelectionMode = RangeSelectionMode.toggledOn;
-
-  // NEW: State variable to control if the calendar is expanded (Month) or shrunk (Week)
   CalendarFormat _calendarFormat = CalendarFormat.month;
 
   Map<String, List<Map<String, dynamic>>> _events = {};
@@ -72,8 +116,6 @@ class _SchoolCalendarScreenState extends State<SchoolCalendarScreen> {
     return days;
   }
 
-  // --- SELECTION HANDLERS ---
-
   void _onDaySelected(DateTime selectedDay, DateTime focusedDay) {
     if (!isSameDay(_selectedDay, selectedDay)) {
       setState(() {
@@ -96,7 +138,6 @@ class _SchoolCalendarScreenState extends State<SchoolCalendarScreen> {
     });
   }
 
-  // --- ADD EVENT MODAL ---
   Future<void> _showAddEventModal() async {
     final titleCtrl = TextEditingController();
     final descCtrl = TextEditingController();
@@ -114,28 +155,45 @@ class _SchoolCalendarScreenState extends State<SchoolCalendarScreen> {
         return StatefulBuilder(
           builder: (context, setModalState) {
             return AlertDialog(
+              backgroundColor: Colors.white,
+              shape: RoundedRectangleBorder(
+                borderRadius: BorderRadius.circular(16),
+              ),
               title: Text(
                 'Add Event: $dateLabel',
-                style: const TextStyle(fontSize: 16),
+                style: const TextStyle(
+                  fontWeight: FontWeight.bold,
+                  color: _Brand.charcoal,
+                  fontSize: 18,
+                ),
               ),
               content: SingleChildScrollView(
                 child: Column(
                   mainAxisSize: MainAxisSize.min,
                   children: [
+                    const SizedBox(height: 6),
                     TextField(
                       controller: titleCtrl,
                       autofocus: true,
-                      decoration: const InputDecoration(
+                      style: const TextStyle(
+                        fontSize: 14,
+                        fontWeight: FontWeight.w600,
+                      ),
+                      decoration: _buildInputDecoration(
                         labelText: 'Event Title',
-                        border: OutlineInputBorder(),
                       ),
                     ),
-                    const SizedBox(height: 16),
+                    const SizedBox(height: 14),
                     DropdownButtonFormField<String>(
                       value: selectedType,
-                      decoration: const InputDecoration(
+                      dropdownColor: Colors.white,
+                      style: const TextStyle(
+                        fontSize: 14,
+                        fontWeight: FontWeight.w600,
+                        color: _Brand.charcoal,
+                      ),
+                      decoration: _buildInputDecoration(
                         labelText: 'Event Type',
-                        border: OutlineInputBorder(),
                       ),
                       items: types
                           .map(
@@ -145,13 +203,16 @@ class _SchoolCalendarScreenState extends State<SchoolCalendarScreen> {
                       onChanged: (val) =>
                           setModalState(() => selectedType = val!),
                     ),
-                    const SizedBox(height: 16),
+                    const SizedBox(height: 14),
                     TextField(
                       controller: descCtrl,
                       maxLines: 3,
-                      decoration: const InputDecoration(
+                      style: const TextStyle(
+                        fontSize: 14,
+                        fontWeight: FontWeight.w600,
+                      ),
+                      decoration: _buildInputDecoration(
                         labelText: 'Notes/Description',
-                        border: OutlineInputBorder(),
                       ),
                     ),
                   ],
@@ -160,12 +221,20 @@ class _SchoolCalendarScreenState extends State<SchoolCalendarScreen> {
               actions: [
                 TextButton(
                   onPressed: () => Navigator.pop(context),
-                  child: const Text('Cancel'),
+                  child: const Text(
+                    'Cancel',
+                    style: TextStyle(
+                      color: _Brand.mutedText,
+                      fontWeight: FontWeight.w600,
+                    ),
+                  ),
                 ),
-                ElevatedButton(
-                  style: ElevatedButton.styleFrom(
-                    backgroundColor: Colors.teal.shade700,
-                    foregroundColor: Colors.white,
+                FilledButton(
+                  style: FilledButton.styleFrom(
+                    backgroundColor: _Brand.tealDark,
+                    shape: RoundedRectangleBorder(
+                      borderRadius: BorderRadius.circular(10),
+                    ),
                   ),
                   onPressed: () async {
                     if (titleCtrl.text.isEmpty) return;
@@ -198,7 +267,10 @@ class _SchoolCalendarScreenState extends State<SchoolCalendarScreen> {
                       _loadEvents();
                     }
                   },
-                  child: const Text('Save Event'),
+                  child: const Text(
+                    'Save Event',
+                    style: TextStyle(fontWeight: FontWeight.bold),
+                  ),
                 ),
               ],
             );
@@ -216,30 +288,47 @@ class _SchoolCalendarScreenState extends State<SchoolCalendarScreen> {
   Color _getColorForEventType(String type) {
     switch (type) {
       case 'Holiday':
-        return Colors.red.shade400;
+        return _Brand.redText;
       case 'Exam':
-        return Colors.amber.shade700;
+        return _Brand.amberWarning;
       case 'Deadline':
-        return Colors.deepPurple.shade400;
+        return const Color(
+          0xFF7C3AED,
+        ); // Styled deep purple matching project context
       case 'Meeting':
-        return Colors.blue.shade600;
+        return _Brand.blueAccent;
       default:
-        return Colors.teal;
+        return _Brand.teal;
+    }
+  }
+
+  Color _getSurfaceColorForEventType(String type) {
+    switch (type) {
+      case 'Holiday':
+        return _Brand.redSurf;
+      case 'Exam':
+        return _Brand.amberSurf;
+      case 'Deadline':
+        return const Color(0xFFF3E8FF);
+      case 'Meeting':
+        return _Brand.blueSurf;
+      default:
+        return _Brand.tealSurf;
     }
   }
 
   IconData _getIconForEventType(String type) {
     switch (type) {
       case 'Holiday':
-        return Icons.celebration;
+        return Icons.celebration_rounded;
       case 'Exam':
-        return Icons.text_snippet;
+        return Icons.text_snippet_rounded;
       case 'Deadline':
-        return Icons.timer;
+        return Icons.timer_rounded;
       case 'Meeting':
-        return Icons.groups;
+        return Icons.groups_rounded;
       default:
-        return Icons.event;
+        return Icons.event_rounded;
     }
   }
 
@@ -248,25 +337,28 @@ class _SchoolCalendarScreenState extends State<SchoolCalendarScreen> {
     final displayEvents = _getEventsForRange();
 
     return Scaffold(
-      backgroundColor: Colors.grey.shade50,
+      backgroundColor: _Brand.bgSurface,
       appBar: AppBar(
-        title: const Text('School Calendar'),
-        backgroundColor: Colors.teal.shade700,
-        foregroundColor: Colors.white,
+        title: const Text(
+          'School Calendar',
+          style: TextStyle(fontWeight: FontWeight.w700, color: _Brand.charcoal),
+        ),
+        backgroundColor: Colors.white,
+        elevation: 0,
+        surfaceTintColor: Colors.transparent,
       ),
       body: _isLoading
-          ? const Center(child: CircularProgressIndicator())
+          ? const Center(child: CircularProgressIndicator(color: _Brand.teal))
           : Column(
               children: [
-                // --- INTERACTIVE CALENDAR WIDGET ---
+                // Container wrapper for layout structural integrity
                 Container(
                   color: Colors.white,
+                  padding: const EdgeInsets.fromLTRB(0, 0, 0, 8),
                   child: TableCalendar(
                     firstDay: DateTime.utc(2020, 1, 1),
                     lastDay: DateTime.utc(2030, 12, 31),
                     focusedDay: _focusedDay,
-
-                    // NEW: Bind the dynamic format state
                     calendarFormat: _calendarFormat,
                     onFormatChanged: (format) {
                       if (_calendarFormat != format) {
@@ -275,153 +367,221 @@ class _SchoolCalendarScreenState extends State<SchoolCalendarScreen> {
                         });
                       }
                     },
-
                     selectedDayPredicate: (day) => isSameDay(_selectedDay, day),
                     rangeStartDay: _rangeStart,
                     rangeEndDay: _rangeEnd,
                     rangeSelectionMode: _rangeSelectionMode,
-
                     eventLoader: _getEventsForDay,
                     onDaySelected: _onDaySelected,
                     onRangeSelected: _onRangeSelected,
                     onPageChanged: (focusedDay) => _focusedDay = focusedDay,
-
                     startingDayOfWeek: StartingDayOfWeek.monday,
-
                     calendarStyle: CalendarStyle(
-                      todayDecoration: BoxDecoration(
-                        color: Colors.teal.shade200,
+                      defaultTextStyle: const TextStyle(
+                        color: _Brand.charcoal,
+                        fontWeight: FontWeight.w500,
+                        fontSize: 13,
+                      ),
+                      weekendTextStyle: const TextStyle(
+                        color: _Brand.mutedText,
+                        fontWeight: FontWeight.w500,
+                        fontSize: 13,
+                      ),
+                      todayTextStyle: const TextStyle(
+                        color: _Brand.tealMid,
+                        fontWeight: FontWeight.bold,
+                        fontSize: 13,
+                      ),
+                      todayDecoration: const BoxDecoration(
+                        color: _Brand.tealSurf,
                         shape: BoxShape.circle,
                       ),
-                      selectedDecoration: BoxDecoration(
-                        color: Colors.teal.shade700,
+                      selectedTextStyle: const TextStyle(
+                        color: Colors.white,
+                        fontWeight: FontWeight.bold,
+                        fontSize: 13,
+                      ),
+                      selectedDecoration: const BoxDecoration(
+                        color: _Brand.tealDark,
                         shape: BoxShape.circle,
                       ),
-                      rangeHighlightColor: Colors.teal.withOpacity(0.2),
-                      rangeStartDecoration: BoxDecoration(
-                        color: Colors.teal.shade700,
+                      rangeHighlightColor: _Brand.tealSurf.withOpacity(0.5),
+                      rangeStartTextStyle: const TextStyle(
+                        color: Colors.white,
+                        fontWeight: FontWeight.bold,
+                        fontSize: 13,
+                      ),
+                      rangeStartDecoration: const BoxDecoration(
+                        color: _Brand.tealDark,
                         shape: BoxShape.circle,
                       ),
-                      rangeEndDecoration: BoxDecoration(
-                        color: Colors.teal.shade900,
+                      rangeEndTextStyle: const TextStyle(
+                        color: Colors.white,
+                        fontWeight: FontWeight.bold,
+                        fontSize: 13,
+                      ),
+                      rangeEndDecoration: const BoxDecoration(
+                        color: _Brand.tealMid,
                         shape: BoxShape.circle,
                       ),
+                      markersMaxCount: 1,
                       markerDecoration: const BoxDecoration(
-                        color: Colors.amber,
+                        color: _Brand.teal,
                         shape: BoxShape.circle,
                       ),
-                      outsideDaysVisible:
-                          false, // Prevents layout jumping when shrinking
+                      outsideDaysVisible: false,
                     ),
-
-                    // NEW: Update header to show the toggle button visually
                     headerStyle: HeaderStyle(
                       formatButtonVisible: true,
                       formatButtonShowsNext: false,
                       titleCentered: true,
-                      formatButtonDecoration: BoxDecoration(
-                        color: Colors.teal.shade50,
-                        borderRadius: BorderRadius.circular(12.0),
-                      ),
-                      formatButtonTextStyle: TextStyle(
-                        color: Colors.teal.shade900,
+                      titleTextStyle: const TextStyle(
+                        color: _Brand.charcoal,
                         fontWeight: FontWeight.bold,
+                        fontSize: 15,
+                      ),
+                      leftChevronIcon: const Icon(
+                        Icons.chevron_left_rounded,
+                        color: _Brand.tealMid,
+                      ),
+                      rightChevronIcon: const Icon(
+                        Icons.chevron_right_rounded,
+                        color: _Brand.tealMid,
+                      ),
+                      formatButtonDecoration: BoxDecoration(
+                        color: _Brand.tealSurf,
+                        borderRadius: BorderRadius.circular(8.0),
+                        border: Border.all(
+                          color: _Brand.teal.withOpacity(0.15),
+                        ),
+                      ),
+                      formatButtonTextStyle: const TextStyle(
+                        color: _Brand.tealDark,
+                        fontWeight: FontWeight.bold,
+                        fontSize: 11,
                       ),
                     ),
                   ),
                 ),
+                const Divider(
+                  height: 1,
+                  thickness: 1,
+                  color: Color(0xFFF3F4F6),
+                ),
 
-                const Divider(height: 1, thickness: 1),
-
-                // --- EVENTS LIST (Wrapped in Expanded to prevent overflow) ---
+                // Core Tasks Engine Pipeline Viewport
                 Expanded(
                   child: displayEvents.isEmpty
                       ? Center(
-                          child: Text(
-                            'No events scheduled.',
-                            style: TextStyle(
-                              color: Colors.grey.shade600,
-                              fontSize: 16,
-                            ),
+                          child: Column(
+                            mainAxisAlignment: MainAxisAlignment.center,
+                            children: [
+                              Icon(
+                                Icons.calendar_today_outlined,
+                                size: 48,
+                                color: Colors.grey.shade300,
+                              ),
+                              const SizedBox(height: 12),
+                              const Text(
+                                'No events scheduled for this block.',
+                                style: TextStyle(
+                                  color: _Brand.mutedText,
+                                  fontSize: 14,
+                                  fontWeight: FontWeight.w500,
+                                ),
+                              ),
+                            ],
                           ),
                         )
                       : ListView.builder(
-                          padding: const EdgeInsets.all(16),
+                          padding: const EdgeInsets.all(18),
                           itemCount: displayEvents.length,
                           itemBuilder: (context, index) {
                             final event = displayEvents[index];
                             final color = _getColorForEventType(event['type']);
+                            final surfaceColor = _getSurfaceColorForEventType(
+                              event['type'],
+                            );
 
-                            return Card(
-                              margin: const EdgeInsets.fromLTRB(0, 0, 0, 12.0),
-                              elevation: 2,
-                              shape: RoundedRectangleBorder(
-                                side: BorderSide(
-                                  color: color.withOpacity(0.5),
-                                  width: 1,
+                            return Container(
+                              margin: const EdgeInsets.fromLTRB(0, 0, 0, 12),
+                              decoration: BoxDecoration(
+                                color: Colors.white,
+                                borderRadius: BorderRadius.circular(14),
+                                border: Border.all(
+                                  color: Colors.grey.shade100,
+                                  width: 1.2,
                                 ),
-                                borderRadius: BorderRadius.circular(12),
                               ),
                               child: ListTile(
-                                leading: CircleAvatar(
-                                  backgroundColor: color.withOpacity(0.2),
+                                contentPadding: const EdgeInsets.symmetric(
+                                  horizontal: 16,
+                                  vertical: 8,
+                                ),
+                                leading: Container(
+                                  padding: const EdgeInsets.all(10),
+                                  decoration: BoxDecoration(
+                                    color: surfaceColor,
+                                    borderRadius: BorderRadius.circular(10),
+                                  ),
                                   child: Icon(
                                     _getIconForEventType(event['type']),
                                     color: color,
+                                    size: 22,
                                   ),
                                 ),
                                 title: Text(
                                   event['title'],
                                   style: const TextStyle(
                                     fontWeight: FontWeight.bold,
+                                    color: _Brand.charcoal,
+                                    fontSize: 15,
                                   ),
                                 ),
-                                subtitle: Column(
-                                  crossAxisAlignment: CrossAxisAlignment.start,
-                                  children: [
-                                    const SizedBox(height: 4),
-                                    Container(
-                                      padding: const EdgeInsets.symmetric(
-                                        horizontal: 8,
-                                        vertical: 2,
-                                      ),
-                                      decoration: BoxDecoration(
-                                        color: color,
-                                        borderRadius: BorderRadius.circular(12),
-                                      ),
-                                      child: Text(
-                                        event['type'],
-                                        style: const TextStyle(
-                                          color: Colors.white,
-                                          fontSize: 10,
-                                          fontWeight: FontWeight.bold,
+                                subtitle: Padding(
+                                  padding: const EdgeInsets.only(top: 6.0),
+                                  child: Column(
+                                    crossAxisAlignment:
+                                        CrossAxisAlignment.start,
+                                    children: [
+                                      Container(
+                                        padding: const EdgeInsets.symmetric(
+                                          horizontal: 8,
+                                          vertical: 3,
+                                        ),
+                                        decoration: BoxDecoration(
+                                          color: surfaceColor,
+                                          borderRadius: BorderRadius.circular(
+                                            6,
+                                          ),
+                                        ),
+                                        child: Text(
+                                          event['type'],
+                                          style: TextStyle(
+                                            color: color,
+                                            fontSize: 10,
+                                            fontWeight: FontWeight.bold,
+                                          ),
                                         ),
                                       ),
-                                    ),
-                                    if (event['description'] != null &&
-                                        event['description']
-                                            .toString()
-                                            .isNotEmpty) ...[
-                                      const SizedBox(height: 6),
-                                      Text(
-                                        event['description'],
-                                        style: TextStyle(
-                                          color: Colors.grey.shade700,
+                                      if (event['description'] != null &&
+                                          event['description']
+                                              .toString()
+                                              .isNotEmpty) ...[
+                                        const SizedBox(height: 6),
+                                        Text(
+                                          event['description'],
+                                          style: const TextStyle(
+                                            color: _Brand.mutedText,
+                                            fontSize: 12,
+                                            fontWeight: FontWeight.w500,
+                                            height: 1.3,
+                                          ),
                                         ),
-                                      ),
+                                      ],
                                     ],
-                                  ],
-                                ),
-                                trailing: IconButton(
-                                  icon: const Icon(
-                                    Icons.delete_outline,
-                                    color: Colors.red,
                                   ),
-                                  onPressed: () => _deleteEvent(event['id']),
                                 ),
-                                isThreeLine:
-                                    event['description'] != null &&
-                                    event['description'].toString().isNotEmpty,
                               ),
                             );
                           },
@@ -431,10 +591,14 @@ class _SchoolCalendarScreenState extends State<SchoolCalendarScreen> {
             ),
       floatingActionButton: FloatingActionButton.extended(
         onPressed: _showAddEventModal,
-        backgroundColor: Colors.teal.shade700,
+        backgroundColor: _Brand.tealDark,
         foregroundColor: Colors.white,
-        icon: const Icon(Icons.add),
-        label: const Text('New Event'),
+        elevation: 2,
+        icon: const Icon(Icons.add_rounded),
+        label: const Text(
+          'New Event',
+          style: TextStyle(fontWeight: FontWeight.bold, fontSize: 13),
+        ),
       ),
     );
   }

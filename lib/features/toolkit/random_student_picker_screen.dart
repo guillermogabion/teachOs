@@ -128,6 +128,25 @@ class _RandomStudentPickerScreenState extends State<RandomStudentPickerScreen>
   void _spinWheel() {
     if (_remainingStudents.isEmpty) return;
 
+    // FIX: Handle single student picker scenario without soft-locking the wheel UI
+    if (_remainingStudents.length == 1) {
+      setState(() {
+        _isShuffling = true;
+        _pickedStudent = null;
+        _winningIndex = 0;
+      });
+
+      Future.delayed(const Duration(milliseconds: 600), () {
+        if (!mounted) return;
+        setState(() {
+          _pickedStudent = _remainingStudents[0];
+          _remainingStudents.clear();
+          _isShuffling = false;
+        });
+      });
+      return;
+    }
+
     setState(() {
       _isShuffling = true;
       _pickedStudent = null;
@@ -141,6 +160,7 @@ class _RandomStudentPickerScreenState extends State<RandomStudentPickerScreen>
     setState(() {
       _remainingStudents = List.from(_currentClassRoster);
       _pickedStudent = null;
+      _isShuffling = false;
     });
   }
 
@@ -431,21 +451,9 @@ class _RandomStudentPickerScreenState extends State<RandomStudentPickerScreen>
                   ),
                   const SizedBox(height: 24),
 
-                  // Primary Display: The Wheel (Wrapped in Expanded to fix overflow)
+                  // Primary Display Section (Optimized layout tree)
                   Expanded(
-                    child: _remainingStudents.length < 2
-                        ? Center(
-                            child: _remainingStudents.isEmpty
-                                ? Text(
-                                    'ALL STUDENTS PICKED',
-                                    style: TextStyle(
-                                      color: Colors.grey.shade400,
-                                      fontWeight: FontWeight.bold,
-                                    ),
-                                  )
-                                : _buildLastStudentCard(),
-                          )
-                        : _remainingStudents.isEmpty
+                    child: _remainingStudents.isEmpty
                         ? Center(
                             child: Text(
                               'ALL STUDENTS PICKED',
@@ -455,6 +463,8 @@ class _RandomStudentPickerScreenState extends State<RandomStudentPickerScreen>
                               ),
                             ),
                           )
+                        : _remainingStudents.length == 1
+                        ? Center(child: _buildLastStudentCard())
                         : FortuneWheel(
                             selected: _spinController.stream,
                             animateFirst: false,
@@ -480,8 +490,6 @@ class _RandomStudentPickerScreenState extends State<RandomStudentPickerScreen>
                                 i++
                               )
                                 FortuneItem(
-                                  // Fixed "?" issue: Database uses 'full_name'
-                                  // Added ConstrainedBox to fix text overflow
                                   child: ConstrainedBox(
                                     constraints: const BoxConstraints(
                                       maxWidth: 120,
@@ -533,7 +541,6 @@ class _RandomStudentPickerScreenState extends State<RandomStudentPickerScreen>
                           ),
                           const SizedBox(height: 4),
                           Text(
-                            // Fixed "?" issue: Database uses 'full_name'
                             '${_pickedStudent!['full_name'] ?? 'Unknown'}'
                                 .toUpperCase(),
                             textAlign: TextAlign.center,
@@ -547,12 +554,11 @@ class _RandomStudentPickerScreenState extends State<RandomStudentPickerScreen>
                       ),
                     )
                   else
-                    // Empty placeholder to keep layout stable when no winner is shown
                     const SizedBox(height: 86),
 
                   const SizedBox(height: 24),
 
-                  // Interaction Control Trigger Blocks
+                  // Interaction Control Buttons
                   ElevatedButton(
                     onPressed: (_isShuffling || _remainingStudents.isEmpty)
                         ? null

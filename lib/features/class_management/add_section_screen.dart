@@ -2,6 +2,12 @@ import 'package:flutter/material.dart';
 import 'models/section_model.dart';
 import 'repositories/section_repository.dart';
 
+class _Brand {
+  static const Color teal = Colors.teal;
+  static final Color greySurf = Colors.grey.shade50;
+  static final Color greyBorder = Colors.grey.shade200;
+}
+
 class AddSectionScreen extends StatefulWidget {
   final Section? sectionToEdit;
 
@@ -15,7 +21,6 @@ class _AddSectionScreenState extends State<AddSectionScreen> {
   final _formKey = GlobalKey<FormState>();
   final _repo = SectionRepository();
 
-  // Removed _idController completely
   late TextEditingController _nameController;
   late TextEditingController _adviserController;
   late TextEditingController _syController;
@@ -33,8 +38,6 @@ class _AddSectionScreenState extends State<AddSectionScreen> {
     _adviserController = TextEditingController(
       text: widget.sectionToEdit?.adviserName ?? '',
     );
-
-    // DYNAMIC TIME ENGINE: Compute the active school year programmatically
     _syController = TextEditingController(
       text: widget.sectionToEdit?.schoolYearId ?? _calculateCurrentSchoolYear(),
     );
@@ -44,37 +47,32 @@ class _AddSectionScreenState extends State<AddSectionScreen> {
     }
   }
 
-  /// Calculates school year based on standard academic operational timelines
   String _calculateCurrentSchoolYear() {
     final now = DateTime.now();
     final year = now.year;
 
-    // If the month is June (6) or later, we are starting the new academic cycle.
-    // Otherwise, we are finishing the cycle that started the prior calendar year.
     if (now.month >= 6) {
-      return '$year-${year + 1}'; // E.g., 2026-2027
+      return '$year-${year + 1}';
     } else {
-      return '${year - 1}-$year'; // E.g., 2025-2026
+      return '${year - 1}-$year';
     }
   }
 
   void _saveSection() async {
-    // 1. Check if the button tap is physically registering
-    print('============= DEBUG: BUTTON TAPPED =============');
+    debugPrint('============= DEBUG: BUTTON TAPPED =============');
 
     if (_formKey.currentState == null) {
-      print('============= DEBUG: Form State is NULL! =============');
+      debugPrint('============= DEBUG: Form State is NULL! =============');
       return;
     }
 
-    // 2. Check if the validator is passing or failing
     bool isValid = _formKey.currentState!.validate();
-    print(
+    debugPrint(
       '============= DEBUG: FORM VALIDATION RESULT = $isValid =============',
     );
 
     if (isValid) {
-      print(
+      debugPrint(
         '============= DEBUG: Form valid! Preparing payload... =============',
       );
 
@@ -88,65 +86,138 @@ class _AddSectionScreenState extends State<AddSectionScreen> {
         schoolYearId: _syController.text.trim(),
       );
 
-      print(
+      debugPrint(
         '============= DEBUG: Sending to database repository =============',
       );
 
       try {
         if (isEditMode) {
           await _repo.updateSection(section);
-          print('============= DEBUG: DB Update Complete! =============');
+          debugPrint('============= DEBUG: DB Update Complete! =============');
         } else {
           await _repo.insertSection(section);
-          print('============= DEBUG: DB Insert Complete! =============');
+          debugPrint('============= DEBUG: DB Insert Complete! =============');
         }
 
         if (mounted) {
           Navigator.pop(context, true);
         }
       } catch (e) {
-        print('============= DATABASE CRASH ERROR: $e =============');
+        debugPrint('============= DATABASE CRASH ERROR: $e =============');
       }
     } else {
-      print(
+      debugPrint(
         '============= DEBUG: Validation blocked execution. Check UI text field errors! =============',
       );
     }
   }
 
+  InputDecoration _buildInputDecoration({
+    required String label,
+    required IconData icon,
+  }) {
+    return InputDecoration(
+      labelText: label,
+      prefixIcon: Icon(icon, size: 18, color: Colors.black45),
+      labelStyle: const TextStyle(
+        fontSize: 13,
+        color: Colors.black45,
+        fontWeight: FontWeight.w500,
+      ),
+      floatingLabelStyle: const TextStyle(
+        color: _Brand.teal,
+        fontWeight: FontWeight.w600,
+      ),
+      contentPadding: const EdgeInsets.symmetric(horizontal: 16, vertical: 16),
+      fillColor: Colors.white,
+      filled: true,
+      enabledBorder: OutlineInputBorder(
+        borderRadius: BorderRadius.circular(12),
+        borderSide: BorderSide(color: _Brand.greyBorder, width: 1),
+      ),
+      focusedBorder: OutlineInputBorder(
+        borderRadius: BorderRadius.circular(12),
+        borderSide: const BorderSide(color: _Brand.teal, width: 1.5),
+      ),
+      errorBorder: OutlineInputBorder(
+        borderRadius: BorderRadius.circular(12),
+        borderSide: BorderSide(color: Colors.red.shade300, width: 1),
+      ),
+      focusedErrorBorder: OutlineInputBorder(
+        borderRadius: BorderRadius.circular(12),
+        borderSide: const BorderSide(color: Colors.red, width: 1.5),
+      ),
+    );
+  }
+
   @override
   Widget build(BuildContext context) {
     return Scaffold(
+      backgroundColor: Colors.white,
       appBar: AppBar(
-        title: Text(isEditMode ? 'Edit Class' : 'Create New Class'),
+        backgroundColor: Colors.white,
+        elevation: 0,
+        surfaceTintColor: Colors.transparent,
+        leading: IconButton(
+          icon: const Icon(
+            Icons.arrow_back_ios_new_rounded,
+            size: 18,
+            color: Colors.black87,
+          ),
+          onPressed: () => Navigator.pop(context),
+        ),
+        bottom: PreferredSize(
+          preferredSize: const Size.fromHeight(0.5),
+          child: Divider(height: 0.5, thickness: 0.5, color: _Brand.greyBorder),
+        ),
+        title: Text(
+          isEditMode ? 'Edit Class Configurations' : 'Create New Class',
+          style: const TextStyle(
+            fontWeight: FontWeight.w700,
+            fontSize: 18,
+            color: Colors.black87,
+            letterSpacing: -0.2,
+          ),
+        ),
       ),
       body: Form(
         key: _formKey,
         child: ListView(
-          padding: const EdgeInsets.all(16.0),
+          padding: const EdgeInsets.symmetric(horizontal: 24, vertical: 20),
           children: [
-            // The unique ID TextFormField has been completely removed from here!
+            // Field: Class Name
             TextFormField(
               controller: _nameController,
-              decoration: const InputDecoration(
-                labelText: 'Section / Class Name (e.g., Diamond, Ruby)',
-                border: OutlineInputBorder(),
+              style: const TextStyle(fontSize: 14, color: Colors.black87),
+              decoration: _buildInputDecoration(
+                label: 'Section / Class Name (e.g., Diamond, Ruby)',
+                icon: Icons.class_outlined,
               ),
               validator: (v) =>
                   v == null || v.isEmpty ? 'Section name is required' : null,
             ),
             const SizedBox(height: 16),
+
+            // Field: Dropdown Grade Level
             DropdownButtonFormField<int>(
               value: _selectedGradeLevel,
-              decoration: const InputDecoration(
-                labelText: 'Grade Level',
-                border: OutlineInputBorder(),
+              style: const TextStyle(fontSize: 14, color: Colors.black87),
+              icon: const Icon(
+                Icons.keyboard_arrow_down_rounded,
+                color: Colors.black45,
+              ),
+              decoration: _buildInputDecoration(
+                label: 'Grade Level Mapping',
+                icon: Icons.layers_outlined,
               ),
               items: List.generate(12, (index) => index + 1)
                   .map(
                     (grade) => DropdownMenuItem(
                       value: grade,
-                      child: Text('Grade $grade'),
+                      child: Text(
+                        'Grade $grade',
+                        style: const TextStyle(fontWeight: FontWeight.w500),
+                      ),
                     ),
                   )
                   .toList(),
@@ -155,33 +226,50 @@ class _AddSectionScreenState extends State<AddSectionScreen> {
               },
             ),
             const SizedBox(height: 16),
+
+            // Field: Adviser Teacher Name
             TextFormField(
               controller: _adviserController,
-              decoration: const InputDecoration(
-                labelText: 'Assigned Adviser Teacher (Optional)',
-                border: OutlineInputBorder(),
+              style: const TextStyle(fontSize: 14, color: Colors.black87),
+              decoration: _buildInputDecoration(
+                label: 'Assigned Adviser Teacher (Optional)',
+                icon: Icons.person_outline_rounded,
               ),
             ),
             const SizedBox(height: 16),
+
+            // Field: School Year Tracking
             TextFormField(
               controller: _syController,
-              decoration: const InputDecoration(
-                labelText: 'School Year Reference',
-                border: OutlineInputBorder(),
+              style: const TextStyle(fontSize: 14, color: Colors.black87),
+              decoration: _buildInputDecoration(
+                label: 'School Year Reference',
+                icon: Icons.date_range_rounded,
               ),
-              validator: (v) =>
-                  v == null || v.isEmpty ? 'School year is required' : null,
+              validator: (v) => v == null || v.isEmpty
+                  ? 'School year identifier is required'
+                  : null,
             ),
-            const SizedBox(height: 24),
+            const SizedBox(height: 32),
+
+            // Commit/Save Action Trigger
             ElevatedButton(
               onPressed: _saveSection,
               style: ElevatedButton.styleFrom(
-                backgroundColor: Colors.teal,
+                backgroundColor: _Brand.teal,
                 foregroundColor: Colors.white,
-                padding: const EdgeInsets.symmetric(vertical: 16),
+                elevation: 0,
+                minimumSize: const Size.fromHeight(52),
+                shape: RoundedRectangleBorder(
+                  borderRadius: BorderRadius.circular(14),
+                ),
+                textStyle: const TextStyle(
+                  fontSize: 15,
+                  fontWeight: FontWeight.w600,
+                ),
               ),
               child: Text(
-                isEditMode ? 'Save Class Configurations' : 'Create Class',
+                isEditMode ? 'Save Class Configurations' : 'Create Class Block',
               ),
             ),
           ],

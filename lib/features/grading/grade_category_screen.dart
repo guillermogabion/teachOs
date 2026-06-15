@@ -2,6 +2,39 @@ import 'package:flutter/material.dart';
 import 'package:uuid/uuid.dart';
 import 'repository/gradebook_repository.dart';
 
+// ─── Brand palette ────────────────────────────────────────────────────────────
+class _Brand {
+  static const tealDark = Color(0xFF085041);
+  static const tealMid = Color(0xFF0F6E56);
+  static const teal = Color(0xFF1D9E75);
+  static const tealSurf = Color(0xFFEAF8F3);
+  static const amberWarning = Color(0xFFD97706);
+  static const redText = Color(0xFFDC2626);
+}
+
+// ─── Reusable Input Decoration ────────────────────────────────────────────────
+InputDecoration _buildInputDecoration({
+  required String labelText,
+  Widget? prefixIcon,
+}) {
+  return InputDecoration(
+    labelText: labelText,
+    labelStyle: const TextStyle(fontSize: 13, color: Colors.black54),
+    prefixIcon: prefixIcon,
+    contentPadding: const EdgeInsets.symmetric(horizontal: 14, vertical: 12),
+    filled: true,
+    fillColor: Colors.white,
+    enabledBorder: OutlineInputBorder(
+      borderRadius: BorderRadius.circular(12),
+      borderSide: BorderSide(color: Colors.grey.shade200, width: 1.2),
+    ),
+    focusedBorder: OutlineInputBorder(
+      borderRadius: BorderRadius.circular(12),
+      borderSide: const BorderSide(color: _Brand.teal, width: 1.5),
+    ),
+  );
+}
+
 class GradeCategoryScreen extends StatefulWidget {
   final String sectionId;
   final String categoryName;
@@ -86,38 +119,47 @@ class _GradeCategoryScreenState extends State<GradeCategoryScreen> {
     await showDialog(
       context: context,
       builder: (context) => AlertDialog(
-        title: Text('New ${widget.categoryName}'),
+        shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(16)),
+        title: Text(
+          'New ${widget.categoryName}',
+          style: const TextStyle(
+            fontWeight: FontWeight.bold,
+            color: _Brand.tealDark,
+          ),
+        ),
         content: Column(
           mainAxisSize: MainAxisSize.min,
           children: [
             TextField(
               controller: titleCtrl,
               autofocus: true,
-              decoration: const InputDecoration(
+              decoration: _buildInputDecoration(
                 labelText: 'Task Title (e.g., Seatwork 1)',
-                border: OutlineInputBorder(),
               ),
             ),
             const SizedBox(height: 12),
             TextField(
               controller: pointsCtrl,
               keyboardType: TextInputType.number,
-              decoration: const InputDecoration(
-                labelText: 'Max Points',
-                border: OutlineInputBorder(),
-              ),
+              decoration: _buildInputDecoration(labelText: 'Max Points'),
             ),
           ],
         ),
         actions: [
           TextButton(
             onPressed: () => Navigator.pop(context),
-            child: const Text('Cancel'),
+            child: const Text(
+              'Cancel',
+              style: TextStyle(color: Colors.black54),
+            ),
           ),
           ElevatedButton(
             style: ElevatedButton.styleFrom(
-              backgroundColor: Colors.teal.shade700,
+              backgroundColor: _Brand.tealMid,
               foregroundColor: Colors.white,
+              shape: RoundedRectangleBorder(
+                borderRadius: BorderRadius.circular(10),
+              ),
             ),
             onPressed: () async {
               if (titleCtrl.text.isEmpty || pointsCtrl.text.isEmpty) return;
@@ -154,7 +196,7 @@ class _GradeCategoryScreenState extends State<GradeCategoryScreen> {
                   ScaffoldMessenger.of(context).showSnackBar(
                     SnackBar(
                       content: Text('Error: $e'),
-                      backgroundColor: Colors.red,
+                      backgroundColor: _Brand.redText,
                     ),
                   );
                 }
@@ -169,9 +211,7 @@ class _GradeCategoryScreenState extends State<GradeCategoryScreen> {
 
   // --- SAVE GRADES TO DATABASE ---
   Future<void> _commitGrades() async {
-    // Dismiss the keyboard safely before saving
     FocusScope.of(context).unfocus();
-
     if (_pendingSavesMap.isEmpty) return;
 
     final payload = _pendingSavesMap.values.toList();
@@ -183,7 +223,7 @@ class _GradeCategoryScreenState extends State<GradeCategoryScreen> {
       ScaffoldMessenger.of(context).showSnackBar(
         const SnackBar(
           content: Text('Grades saved securely.'),
-          backgroundColor: Colors.green,
+          backgroundColor: _Brand.tealDark,
         ),
       );
     }
@@ -195,39 +235,57 @@ class _GradeCategoryScreenState extends State<GradeCategoryScreen> {
     final sortedStudentIds = _students.keys.toList()
       ..sort((a, b) => _students[a]!.compareTo(_students[b]!));
 
-    // Lock Heights to prevent alignment snapping
-    const double rowHeight = 60.0;
-    const double headerHeight = 70.0;
+    // Locked Heights to prevent dynamic visual alignment snapping
+    const double rowHeight = 56.0;
+    const double headerHeight = 64.0;
 
     return Scaffold(
       backgroundColor: Colors.white,
       appBar: AppBar(
-        title: Text('${widget.categoryName} Matrix'),
-        backgroundColor: Colors.teal.shade700,
-        foregroundColor: Colors.white,
+        title: Text(
+          '${widget.categoryName} Matrix',
+          style: const TextStyle(
+            fontWeight: FontWeight.w700,
+            color: Colors.black87,
+          ),
+        ),
+        backgroundColor: Colors.white,
+        elevation: 0,
+        surfaceTintColor: Colors.transparent,
         actions: [
           if (_hasUnsavedChanges)
             Padding(
-              padding: const EdgeInsets.fromLTRB(0.0, 8.0, 8.0, 8.0),
+              padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 8),
               child: FilledButton.icon(
                 style: FilledButton.styleFrom(
-                  backgroundColor: Colors.amber.shade700,
+                  backgroundColor: _Brand.amberWarning,
+                  shape: RoundedRectangleBorder(
+                    borderRadius: BorderRadius.circular(10),
+                  ),
+                  padding: const EdgeInsets.symmetric(horizontal: 12),
                 ),
-                icon: const Icon(Icons.save, size: 18),
-                label: const Text('Save Changes'),
+                icon: const Icon(Icons.save_rounded, size: 16),
+                label: const Text(
+                  'Save Changes',
+                  style: TextStyle(fontSize: 12, fontWeight: FontWeight.bold),
+                ),
                 onPressed: _commitGrades,
               ),
             ),
         ],
       ),
       body: _isLoading
-          ? const Center(child: CircularProgressIndicator())
+          ? const Center(child: CircularProgressIndicator(color: _Brand.teal))
           : _students.isEmpty
-          ? const Center(child: Text('No students enrolled in this class.'))
+          ? const Center(
+              child: Text(
+                'No students enrolled in this class.',
+                style: TextStyle(color: Colors.black54),
+              ),
+            )
           : Column(
               children: [
                 Expanded(
-                  // Master vertical scroll for both panels
                   child: SingleChildScrollView(
                     scrollDirection: Axis.vertical,
                     child: Row(
@@ -240,8 +298,8 @@ class _GradeCategoryScreenState extends State<GradeCategoryScreen> {
                           decoration: BoxDecoration(
                             border: Border(
                               right: BorderSide(
-                                color: Colors.grey.shade400,
-                                width: 2,
+                                color: Colors.grey.shade300,
+                                width: 1.5,
                               ),
                             ),
                           ),
@@ -250,14 +308,18 @@ class _GradeCategoryScreenState extends State<GradeCategoryScreen> {
                             dataRowMaxHeight: rowHeight,
                             headingRowHeight: headerHeight,
                             headingRowColor: MaterialStateProperty.all(
-                              Colors.grey.shade100,
+                              Colors.grey.shade50,
                             ),
                             horizontalMargin: 16,
+                            columnSpacing: 0,
                             columns: const [
                               DataColumn(
                                 label: Text(
                                   'Student Name',
-                                  style: TextStyle(fontWeight: FontWeight.bold),
+                                  style: TextStyle(
+                                    fontWeight: FontWeight.w700,
+                                    color: Colors.black87,
+                                  ),
                                 ),
                               ),
                             ],
@@ -265,7 +327,6 @@ class _GradeCategoryScreenState extends State<GradeCategoryScreen> {
                               return DataRow(
                                 cells: [
                                   DataCell(
-                                    // Ensure text never wraps to two lines, breaking the sync
                                     SizedBox(
                                       width: 140,
                                       child: Text(
@@ -274,6 +335,8 @@ class _GradeCategoryScreenState extends State<GradeCategoryScreen> {
                                         overflow: TextOverflow.ellipsis,
                                         style: const TextStyle(
                                           fontWeight: FontWeight.w600,
+                                          fontSize: 13,
+                                          color: Colors.black87,
                                         ),
                                       ),
                                     ),
@@ -285,7 +348,7 @@ class _GradeCategoryScreenState extends State<GradeCategoryScreen> {
                         ),
 
                         // ==========================================
-                        // RIGHT PANEL: Scrollable Tasks & Scores (INLINE EDITING)
+                        // RIGHT PANEL: Scrollable Tasks & Scores
                         // ==========================================
                         Expanded(
                           child: SingleChildScrollView(
@@ -295,48 +358,63 @@ class _GradeCategoryScreenState extends State<GradeCategoryScreen> {
                               dataRowMaxHeight: rowHeight,
                               headingRowHeight: headerHeight,
                               headingRowColor: MaterialStateProperty.all(
-                                Colors.teal.shade50,
+                                _Brand.tealSurf,
                               ),
+                              horizontalMargin: 12,
+                              columnSpacing: 16,
                               border: TableBorder(
                                 horizontalInside: BorderSide(
-                                  color: Colors.grey.shade200,
+                                  color: Colors.grey.shade100,
+                                  width: 1,
                                 ),
                                 verticalInside: BorderSide(
-                                  color: Colors.grey.shade200,
+                                  color: Colors.grey.shade100,
+                                  width: 1,
                                 ),
                               ),
                               columns: [
                                 ...sortedItemIds.map((itemId) {
                                   final item = _gradeItems[itemId]!;
                                   return DataColumn(
-                                    label: Column(
-                                      mainAxisAlignment:
-                                          MainAxisAlignment.center,
-                                      children: [
-                                        Text(
-                                          item['title'],
-                                          style: TextStyle(
-                                            fontWeight: FontWeight.bold,
-                                            color: Colors.teal.shade900,
+                                    label: Expanded(
+                                      child: Column(
+                                        mainAxisAlignment:
+                                            MainAxisAlignment.center,
+                                        crossAxisAlignment:
+                                            CrossAxisAlignment.center,
+                                        children: [
+                                          Text(
+                                            item['title'],
+                                            style: const TextStyle(
+                                              fontWeight: FontWeight.w700,
+                                              color: _Brand.tealDark,
+                                              fontSize: 12,
+                                            ),
+                                            overflow: TextOverflow.ellipsis,
                                           ),
-                                        ),
-                                        Text(
-                                          'Max: ${item['max_points']}',
-                                          style: TextStyle(
-                                            fontSize: 12,
-                                            color: Colors.teal.shade700,
+                                          const SizedBox(height: 2),
+                                          Text(
+                                            'Max: ${item['max_points']}',
+                                            style: TextStyle(
+                                              fontSize: 10,
+                                              fontWeight: FontWeight.w500,
+                                              color: _Brand.tealMid.withOpacity(
+                                                0.8,
+                                              ),
+                                            ),
                                           ),
-                                        ),
-                                      ],
+                                        ],
+                                      ),
                                     ),
                                   );
                                 }),
-                                DataColumn(
+                                const DataColumn(
                                   label: Text(
                                     'Average %',
                                     style: TextStyle(
-                                      fontWeight: FontWeight.bold,
-                                      color: Colors.teal.shade900,
+                                      fontWeight: FontWeight.w700,
+                                      color: _Brand.tealDark,
+                                      fontSize: 12,
                                     ),
                                   ),
                                 ),
@@ -357,13 +435,9 @@ class _GradeCategoryScreenState extends State<GradeCategoryScreen> {
 
                                   return DataCell(
                                     Container(
-                                      width: 80,
+                                      width: 64,
                                       alignment: Alignment.center,
-                                      color: score != null
-                                          ? Colors.transparent
-                                          : Colors.grey.shade50,
                                       child: TextFormField(
-                                        // INLINE EDITING ENABLED HERE
                                         initialValue: score != null
                                             ? score.toStringAsFixed(1)
                                             : '',
@@ -373,17 +447,24 @@ class _GradeCategoryScreenState extends State<GradeCategoryScreen> {
                                             ),
                                         textAlign: TextAlign.center,
                                         style: TextStyle(
+                                          fontSize: 13,
                                           fontWeight: score != null
                                               ? FontWeight.bold
                                               : FontWeight.normal,
                                           color: score != null
-                                              ? Colors.black
-                                              : Colors.grey.shade600,
+                                              ? Colors.black87
+                                              : Colors.black45,
                                         ),
                                         decoration: const InputDecoration(
                                           border: InputBorder.none,
                                           hintText: '--',
+                                          hintStyle: TextStyle(
+                                            color: Colors.black26,
+                                          ),
                                           isDense: true,
+                                          contentPadding: EdgeInsets.symmetric(
+                                            vertical: 8,
+                                          ),
                                         ),
                                         onChanged: (value) {
                                           final parsedValue = double.tryParse(
@@ -429,11 +510,11 @@ class _GradeCategoryScreenState extends State<GradeCategoryScreen> {
                                         child: Text(
                                           '${avg.toStringAsFixed(1)}%',
                                           style: TextStyle(
-                                            fontWeight: FontWeight.bold,
+                                            fontWeight: FontWeight.w700,
+                                            fontSize: 12,
                                             color: avg >= 75
-                                                ? Colors.teal
-                                                : Colors
-                                                      .red, // Colors based on passing grade
+                                                ? _Brand.teal
+                                                : _Brand.redText,
                                           ),
                                         ),
                                       ),
@@ -452,10 +533,15 @@ class _GradeCategoryScreenState extends State<GradeCategoryScreen> {
             ),
       floatingActionButton: FloatingActionButton.extended(
         onPressed: _showCreateTaskModal,
-        backgroundColor: Colors.teal.shade700,
+        backgroundColor: _Brand.tealDark,
         foregroundColor: Colors.white,
-        icon: const Icon(Icons.add),
-        label: Text('New ${widget.categoryName}'),
+        elevation: 2,
+        icon: const Icon(Icons.add_rounded, size: 20),
+        label: Text(
+          'New ${widget.categoryName}',
+          style: const TextStyle(fontWeight: FontWeight.w600, fontSize: 13),
+        ),
+        shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(14)),
       ),
     );
   }

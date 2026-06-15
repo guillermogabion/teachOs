@@ -17,6 +17,13 @@ class _BackupSettingsScreenState extends State<BackupSettingsScreen> {
   bool _isRestoring = false;
   final TextEditingController _importController = TextEditingController();
 
+  @override
+  void dispose() {
+    // FIXED: Properly dispose of the text controller to prevent memory leaks
+    _importController.dispose();
+    super.dispose();
+  }
+
   // ── EXPORT DIALOG ──────────────────────────────────────────────────────────
   void _showBackupSuccessDialog(BuildContext context, String downloadUrl) {
     showDialog(
@@ -164,19 +171,21 @@ class _BackupSettingsScreenState extends State<BackupSettingsScreen> {
               onPressed: _isRestoring
                   ? null
                   : () async {
-                      if (_importController.text.isEmpty) return;
+                      final targetUrl = _importController.text.trim();
+                      if (targetUrl.isEmpty) return;
+
                       setState(() => _isRestoring = true);
-                      final success = await importFromLink(
-                        _importController.text,
-                      );
+                      final success = await importFromLink(targetUrl);
                       if (mounted) setState(() => _isRestoring = false);
+
                       if (success && mounted) {
                         showDialog(
                           context: context,
+                          barrierDismissible: false,
                           builder: (_) => AlertDialog(
                             title: const Text('Restore Successful'),
                             content: const Text(
-                              'Database restored! Please restart the app.',
+                              'Database restored! Please restart the app to apply all changes.',
                             ),
                             actions: [
                               TextButton(
@@ -332,7 +341,6 @@ class _BackupLinkDialogState extends State<_BackupLinkDialog>
 }
 
 // ── QR SCANNER SCREEN ─────────────────────────────────────────────────────────
-// ── QR SCANNER SCREEN ─────────────────────────────────────────────────────────
 class _QrScannerScreen extends StatefulWidget {
   const _QrScannerScreen();
 
@@ -348,6 +356,14 @@ class _QrScannerScreenState extends State<_QrScannerScreen> {
   void dispose() {
     _controller.dispose();
     super.dispose();
+  }
+
+  // Helper method to safely validate if parsed text is our actual backup link configuration
+  bool _isValidBackupUrl(String? url) {
+    if (url == null) return false;
+    // RECOMMENDED: Change this to target your specific platform url context
+    // e.g., url.startsWith('https://yourdomain.site/backups/')
+    return url.startsWith('http');
   }
 
   Future<void> _pickFromGallery() async {
@@ -368,12 +384,14 @@ class _QrScannerScreenState extends State<_QrScannerScreen> {
     }
 
     final value = result.barcodes.firstOrNull?.rawValue;
-    if (value != null && value.startsWith('http') && mounted) {
+    if (_isValidBackupUrl(value) && mounted) {
       Navigator.pop(context, value);
     } else if (mounted) {
       ScaffoldMessenger.of(context).showSnackBar(
         const SnackBar(
-          content: Text('Invalid QR code. Please use a backup QR code.'),
+          content: Text(
+            'Invalid QR code. Please use a valid app backup QR code.',
+          ),
           backgroundColor: Colors.red,
         ),
       );
@@ -388,7 +406,6 @@ class _QrScannerScreenState extends State<_QrScannerScreen> {
         backgroundColor: Colors.teal,
         foregroundColor: Colors.white,
         actions: [
-          // Gallery picker button in AppBar
           IconButton(
             tooltip: 'Pick from Gallery',
             icon: const Icon(Icons.photo_library_rounded),
@@ -404,7 +421,7 @@ class _QrScannerScreenState extends State<_QrScannerScreen> {
               if (_scanned) return;
               final barcode = capture.barcodes.firstOrNull;
               final value = barcode?.rawValue;
-              if (value != null && value.startsWith('http')) {
+              if (_isValidBackupUrl(value)) {
                 _scanned = true;
                 Navigator.pop(context, value);
               }
@@ -423,7 +440,7 @@ class _QrScannerScreenState extends State<_QrScannerScreen> {
             ),
           ),
 
-          // Bottom hint
+          // Bottom interface hints
           Positioned(
             bottom: 40,
             left: 0,
@@ -451,6 +468,10 @@ class _QrScannerScreenState extends State<_QrScannerScreen> {
                   style: ElevatedButton.styleFrom(
                     backgroundColor: Colors.teal,
                     foregroundColor: Colors.white,
+                    padding: const EdgeInsets.symmetric(
+                      horizontal: 24,
+                      vertical: 12,
+                    ),
                   ),
                   icon: const Icon(Icons.photo_library_rounded),
                   label: const Text('Browse Gallery'),

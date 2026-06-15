@@ -3,6 +3,20 @@ import 'package:intl/intl.dart';
 import '../attendance/repository/attendance_repository.dart';
 import 'models/section_model.dart';
 
+class _Brand {
+  static const Color teal = Color(0xFF00897B);
+  static const Color tealSurf = Color(0xFFB2DFDB);
+  static const Color tealMid = Color(0xFF00796B);
+  static const Color tealLight = Color(0xFF80CBC4);
+  static const Color redText = Color(0xFFB00020);
+  static const Color redSurf = Color(0xFFFFEBEE);
+  static const Color redBorder = Color(0xFFEF9A9A);
+  static const Color amberSurf = Color(0xFFFFF8E1);
+  static const Color amberText = Color(0xFFFFA000);
+  static const Color blueSurf = Color(0xFFE3F2FD);
+  static const Color blueText = Color(0xFF1976D2);
+}
+
 class ClassAttendanceScreen extends StatefulWidget {
   final Section section;
 
@@ -169,28 +183,45 @@ class _ClassAttendanceScreenState extends State<ClassAttendanceScreen> {
     return DefaultTabController(
       length: 2,
       child: Scaffold(
-        backgroundColor: Colors.grey.shade50,
+        backgroundColor: Colors.white, // Switched to white for a cleaner base
         appBar: AppBar(
+          backgroundColor: Colors.white,
+          elevation: 0,
+          surfaceTintColor: Colors.transparent,
+          bottom: PreferredSize(
+            preferredSize: const Size.fromHeight(0.5),
+            child: Divider(
+              height: 0.5,
+              thickness: 0.5,
+              color: Colors.grey.shade200,
+            ),
+          ),
           title: Column(
             crossAxisAlignment: CrossAxisAlignment.start,
             children: [
               Text(
                 '${widget.section.name} Roll Call',
                 style: const TextStyle(
-                  fontWeight: FontWeight.bold,
-                  fontSize: 16,
+                  fontWeight: FontWeight.w700,
+                  fontSize: 18,
+                  color: Colors.black87,
+                  letterSpacing: -0.2,
                 ),
               ),
+              const SizedBox(height: 2),
               Text(
                 'Grade ${widget.section.gradeLevel}',
-                style: const TextStyle(fontSize: 12, color: Colors.grey),
+                style: const TextStyle(fontSize: 12, color: Colors.black45),
               ),
             ],
           ),
           actions: [
             if (_hasExistingData)
               IconButton(
-                icon: const Icon(Icons.delete_sweep_rounded, color: Colors.red),
+                icon: const Icon(
+                  Icons.delete_sweep_rounded,
+                  color: _Brand.redText,
+                ), // Assuming _Brand.redText exists
                 tooltip: 'Wipe Logs for This Day',
                 onPressed: _clearDayLogs,
               ),
@@ -201,7 +232,7 @@ class _ClassAttendanceScreenState extends State<ClassAttendanceScreen> {
             // Dynamic Date Picker Bar Strip
             Container(
               color: Colors.white,
-              padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 12),
+              padding: const EdgeInsets.symmetric(horizontal: 20, vertical: 16),
               child: Row(
                 mainAxisAlignment: MainAxisAlignment.spaceBetween,
                 children: [
@@ -209,34 +240,68 @@ class _ClassAttendanceScreenState extends State<ClassAttendanceScreen> {
                     children: [
                       const Icon(
                         Icons.calendar_today_rounded,
-                        size: 18,
-                        color: Colors.teal,
+                        size: 16,
+                        color: _Brand.teal,
                       ),
                       const SizedBox(width: 8),
                       Text(
                         formattedDate,
                         style: const TextStyle(
-                          fontWeight: FontWeight.bold,
+                          fontWeight: FontWeight.w600,
                           fontSize: 15,
+                          color: Colors.black87,
                         ),
                       ),
                     ],
                   ),
-                  TextButton.icon(
-                    onPressed: () async {
+                  InkWell(
+                    onTap: () async {
                       final picked = await showDatePicker(
                         context: context,
                         initialDate: _selectedDate,
                         firstDate: DateTime(2025),
                         lastDate: DateTime(2030),
+                        builder: (context, child) => Theme(
+                          data: Theme.of(context).copyWith(
+                            colorScheme: const ColorScheme.light(
+                              primary: _Brand.teal,
+                              onPrimary: Colors.white,
+                              onSurface: Colors.black87,
+                            ),
+                          ),
+                          child: child!,
+                        ),
                       );
                       if (picked != null) {
                         setState(() => _selectedDate = picked);
                         _loadClassRoster();
                       }
                     },
-                    icon: const Icon(Icons.edit_calendar_rounded, size: 16),
-                    label: const Text('Change Date'),
+                    borderRadius: BorderRadius.circular(8),
+                    child: Padding(
+                      padding: const EdgeInsets.symmetric(
+                        horizontal: 8,
+                        vertical: 4,
+                      ),
+                      child: Row(
+                        children: const [
+                          Icon(
+                            Icons.edit_calendar_rounded,
+                            size: 14,
+                            color: _Brand.teal,
+                          ),
+                          SizedBox(width: 4),
+                          Text(
+                            'Change',
+                            style: TextStyle(
+                              fontSize: 13,
+                              fontWeight: FontWeight.w500,
+                              color: _Brand.teal,
+                            ),
+                          ),
+                        ],
+                      ),
+                    ),
                   ),
                 ],
               ),
@@ -245,35 +310,68 @@ class _ClassAttendanceScreenState extends State<ClassAttendanceScreen> {
             // Data Status Notice Badge
             Container(
               width: double.infinity,
-              color: _hasExistingData
-                  ? Colors.amber.shade50
-                  : Colors.blue.shade50,
-              padding: const EdgeInsets.symmetric(vertical: 6, horizontal: 16),
-              child: Text(
-                _hasExistingData
-                    ? 'Viewing saved attendance roll. Modifying fields will run an overwrite update.'
-                    : 'No logs found for this date. Displaying temporary default values.',
-                style: TextStyle(
-                  fontSize: 11,
+              margin: const EdgeInsets.symmetric(horizontal: 20, vertical: 4),
+              padding: const EdgeInsets.symmetric(vertical: 10, horizontal: 14),
+              decoration: BoxDecoration(
+                color: _hasExistingData ? _Brand.amberSurf : _Brand.blueSurf,
+                borderRadius: BorderRadius.circular(10),
+                border: Border.all(
                   color: _hasExistingData
-                      ? Colors.amber.shade900
-                      : Colors.blue.shade900,
-                  fontWeight: FontWeight.w500,
+                      ? Colors.amber.shade200
+                      : Colors.blue.shade200,
+                  width: 0.8,
                 ),
               ),
+              child: Row(
+                children: [
+                  Icon(
+                    _hasExistingData
+                        ? Icons.info_outline_rounded
+                        : Icons.lightbulb_outline_rounded,
+                    size: 16,
+                    color: _hasExistingData
+                        ? _Brand.amberText
+                        : _Brand.blueText,
+                  ),
+                  const SizedBox(width: 8),
+                  Expanded(
+                    child: Text(
+                      _hasExistingData
+                          ? 'Viewing saved attendance. Modifications will overwrite.'
+                          : 'No logs found for this date. Displaying defaults.',
+                      style: TextStyle(
+                        fontSize: 12,
+                        color: _hasExistingData
+                            ? _Brand.amberText
+                            : _Brand.blueText,
+                        fontWeight: FontWeight.w500,
+                      ),
+                    ),
+                  ),
+                ],
+              ),
             ),
+
+            const SizedBox(height: 12),
 
             // Segregated Gender Tabs Header
             Container(
               decoration: BoxDecoration(
                 color: Colors.white,
-                border: Border(bottom: BorderSide(color: Colors.grey.shade200)),
+                border: Border(
+                  bottom: BorderSide(color: Colors.grey.shade200, width: 0.8),
+                ),
               ),
               child: TabBar(
-                labelColor: Colors.teal,
-                unselectedLabelColor: Colors.grey,
-                indicatorColor: Colors.teal,
+                labelColor: _Brand.teal,
+                unselectedLabelColor: Colors.black45,
+                indicatorColor: _Brand.teal,
+                indicatorWeight: 2.5,
                 indicatorSize: TabBarIndicatorSize.tab,
+                labelStyle: const TextStyle(
+                  fontWeight: FontWeight.w600,
+                  fontSize: 13,
+                ),
                 tabs: [
                   Tab(text: 'Male (${_maleStudentIds.length})'),
                   Tab(text: 'Female (${_femaleStudentIds.length})'),
@@ -283,34 +381,54 @@ class _ClassAttendanceScreenState extends State<ClassAttendanceScreen> {
 
             // Tab Views for Roster Lists
             Expanded(
-              child: _isLoading
-                  ? const Center(child: CircularProgressIndicator())
-                  : TabBarView(
-                      children: [
-                        _buildAttendanceList(_maleStudentIds),
-                        _buildAttendanceList(_femaleStudentIds),
-                      ],
-                    ),
+              child: Container(
+                color: Colors
+                    .grey
+                    .shade50, // Slight off-white for the list background
+                child: _isLoading
+                    ? const Center(
+                        child: CircularProgressIndicator(color: _Brand.teal),
+                      )
+                    : TabBarView(
+                        children: [
+                          _buildAttendanceList(_maleStudentIds),
+                          _buildAttendanceList(_femaleStudentIds),
+                        ],
+                      ),
+              ),
             ),
           ],
         ),
-        bottomNavigationBar: SafeArea(
-          child: Padding(
-            padding: const EdgeInsets.all(12.0),
-            child: ElevatedButton(
-              onPressed: _commitToDatabase,
-              style: ElevatedButton.styleFrom(
-                backgroundColor: Colors.teal,
-                foregroundColor: Colors.white,
-                minimumSize: const Size.fromHeight(52),
-                shape: RoundedRectangleBorder(
-                  borderRadius: BorderRadius.circular(12),
+        bottomNavigationBar: Container(
+          decoration: BoxDecoration(
+            color: Colors.white,
+            border: Border(
+              top: BorderSide(color: Colors.grey.shade200, width: 0.8),
+            ),
+          ),
+          child: SafeArea(
+            child: Padding(
+              padding: const EdgeInsets.symmetric(horizontal: 20, vertical: 16),
+              child: ElevatedButton(
+                onPressed: _commitToDatabase,
+                style: ElevatedButton.styleFrom(
+                  backgroundColor: _Brand.teal,
+                  foregroundColor: Colors.white,
+                  elevation: 0,
+                  minimumSize: const Size.fromHeight(52),
+                  shape: RoundedRectangleBorder(
+                    borderRadius: BorderRadius.circular(14),
+                  ),
                 ),
-              ),
-              child: Text(
-                _hasExistingData
-                    ? 'Update Saved Attendance'
-                    : 'Save Attendance Record',
+                child: Text(
+                  _hasExistingData
+                      ? 'Update Saved Attendance'
+                      : 'Save Attendance Record',
+                  style: const TextStyle(
+                    fontSize: 15,
+                    fontWeight: FontWeight.w600,
+                  ),
+                ),
               ),
             ),
           ),
@@ -324,41 +442,59 @@ class _ClassAttendanceScreenState extends State<ClassAttendanceScreen> {
       return const Center(
         child: Text(
           'No records found for this category.',
-          style: TextStyle(color: Colors.grey, fontSize: 13),
+          style: TextStyle(color: Colors.black45, fontSize: 13),
         ),
       );
     }
 
     return ListView.builder(
       itemCount: studentIds.length,
-      padding: const EdgeInsets.all(12),
+      padding: const EdgeInsets.symmetric(horizontal: 20, vertical: 16),
       itemBuilder: (context, index) {
         final studentId = studentIds[index];
         final currentStatus = _localAttendanceState[studentId] ?? 'PRESENT';
 
-        return Card(
-          elevation: 0,
-          color: Colors.white,
-          margin: const EdgeInsets.symmetric(vertical: 4),
-          shape: RoundedRectangleBorder(
-            borderRadius: BorderRadius.circular(12),
-            side: BorderSide(color: Colors.grey.shade200),
+        return Container(
+          margin: const EdgeInsets.fromLTRB(0, 0, 0, 10),
+          decoration: BoxDecoration(
+            color: Colors.white,
+            borderRadius: BorderRadius.circular(14),
+            border: Border.all(color: Colors.grey.shade200, width: 0.8),
           ),
           child: Padding(
-            padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 8),
+            padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 12),
             child: Row(
               mainAxisAlignment: MainAxisAlignment.spaceBetween,
               children: [
                 Expanded(
-                  child: Column(
-                    crossAxisAlignment: CrossAxisAlignment.start,
+                  child: Row(
                     children: [
-                      const SizedBox(height: 2),
-                      Text(
-                        _studentNames[studentId] ?? 'Unknown Student',
-                        style: const TextStyle(
-                          fontWeight: FontWeight.w500,
-                          fontSize: 14,
+                      // Optional: A small avatar or initial block looks great here
+                      Container(
+                        width: 32,
+                        height: 32,
+                        decoration: BoxDecoration(
+                          color: Colors.grey.shade100,
+                          borderRadius: BorderRadius.circular(8),
+                        ),
+                        alignment: Alignment.center,
+                        child: Text(
+                          (_studentNames[studentId] ?? '?')[0].toUpperCase(),
+                          style: const TextStyle(
+                            color: Colors.black54,
+                            fontWeight: FontWeight.w600,
+                          ),
+                        ),
+                      ),
+                      const SizedBox(width: 12),
+                      Expanded(
+                        child: Text(
+                          _studentNames[studentId] ?? 'Unknown Student',
+                          style: const TextStyle(
+                            fontWeight: FontWeight.w600,
+                            color: Colors.black87,
+                            fontSize: 14,
+                          ),
                         ),
                       ),
                     ],
@@ -369,16 +505,21 @@ class _ClassAttendanceScreenState extends State<ClassAttendanceScreen> {
                     _buildStatusButton(
                       label: 'Present',
                       isActive: currentStatus == 'PRESENT',
-                      activeColor: Colors.teal,
+                      activeBgColor: _Brand.tealSurf,
+                      activeTextColor: _Brand.tealMid,
+                      activeBorderColor: _Brand.tealLight,
                       onTap: () => setState(
                         () => _localAttendanceState[studentId] = 'PRESENT',
                       ),
                     ),
-                    const SizedBox(width: 6),
+                    const SizedBox(width: 8),
                     _buildStatusButton(
                       label: 'Absent',
                       isActive: currentStatus == 'ABSENT',
-                      activeColor: Colors.red.shade600,
+                      activeBgColor: _Brand
+                          .redSurf, // Assuming these exist in your _Brand class
+                      activeTextColor: _Brand.redText,
+                      activeBorderColor: _Brand.redBorder,
                       onTap: () => setState(
                         () => _localAttendanceState[studentId] = 'ABSENT',
                       ),
@@ -396,27 +537,30 @@ class _ClassAttendanceScreenState extends State<ClassAttendanceScreen> {
   Widget _buildStatusButton({
     required String label,
     required bool isActive,
-    required Color activeColor,
+    required Color activeBgColor,
+    required Color activeTextColor,
+    required Color activeBorderColor,
     required VoidCallback onTap,
   }) {
     return InkWell(
       onTap: onTap,
-      borderRadius: BorderRadius.circular(8),
+      borderRadius: BorderRadius.circular(99),
       child: Container(
-        padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 8),
+        padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 6),
         decoration: BoxDecoration(
-          color: isActive ? activeColor : Colors.grey.shade100,
-          borderRadius: BorderRadius.circular(8),
+          color: isActive ? activeBgColor : Colors.white,
+          borderRadius: BorderRadius.circular(99),
           border: Border.all(
-            color: isActive ? activeColor : Colors.grey.shade300,
+            color: isActive ? activeBorderColor : Colors.grey.shade200,
+            width: 0.8,
           ),
         ),
         child: Text(
           label,
           style: TextStyle(
             fontSize: 12,
-            fontWeight: FontWeight.bold,
-            color: isActive ? Colors.white : Colors.grey.shade700,
+            fontWeight: FontWeight.w600,
+            color: isActive ? activeTextColor : Colors.black45,
           ),
         ),
       ),

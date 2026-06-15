@@ -26,11 +26,10 @@ class _StudentDemographicsScreenState extends State<StudentDemographicsScreen> {
   // Active Cross-Filter Targets
   String _selectedGender = 'All';
   String _selectedSchoolYear = 'All';
-  DateTime? _selectedDate = DateTime.now(); // Defaults to today
+  DateTime? _selectedDate = DateTime.now();
   String _selectedMonth = 'All';
   String _selectedYear = 'All';
 
-  // Month Mapping Dataset for the dropdown
   final List<Map<String, String>> _monthsList = [
     {'value': 'All', 'label': 'All Months'},
     {'value': '01', 'label': 'January'},
@@ -56,7 +55,6 @@ class _StudentDemographicsScreenState extends State<StudentDemographicsScreen> {
   Future<void> _fetchUnifiedAnalytics() async {
     setState(() => _isLoading = true);
     try {
-      // If a specific day filter is selected, format it for SQLite (YYYY-MM-DD)
       String? formattedDate = _selectedDate != null
           ? DateFormat('yyyy-MM-dd').format(_selectedDate!)
           : null;
@@ -84,243 +82,141 @@ class _StudentDemographicsScreenState extends State<StudentDemographicsScreen> {
     }
   }
 
+  // --- UI CONSTANTS ---
+  final _borderRadius = BorderRadius.circular(16);
+  final _inputDecoration = InputDecoration(
+    filled: true,
+    fillColor: Colors.grey.shade100,
+    border: OutlineInputBorder(
+      borderRadius: BorderRadius.circular(12),
+      borderSide: BorderSide.none,
+    ),
+    contentPadding: const EdgeInsets.symmetric(horizontal: 16, vertical: 12),
+    labelStyle: const TextStyle(fontSize: 14),
+  );
+
   @override
   Widget build(BuildContext context) {
     return Scaffold(
       backgroundColor: Colors.grey.shade50,
       appBar: AppBar(
         title: const Text(
-          'System Analytics Dashboard',
-          style: TextStyle(fontWeight: FontWeight.bold),
+          'Analytics Dashboard',
+          style: TextStyle(fontWeight: FontWeight.w700),
         ),
         backgroundColor: Colors.white,
-        foregroundColor: Colors.black87,
-        elevation: 0.5,
+        elevation: 0,
+        centerTitle: false,
       ),
-      body: Column(
-        children: [
-          _buildControlFilteringMatrix(),
-          Expanded(
-            child: _isLoading
-                ? const Center(
-                    child: CircularProgressIndicator(color: Colors.blueAccent),
-                  )
-                : RefreshIndicator(
-                    onRefresh: _fetchUnifiedAnalytics,
-                    color: Colors.blueAccent,
-                    child: ListView(
-                      padding: const EdgeInsets.all(16.0),
-                      children: [
-                        _buildRealtimeAttendanceRow(),
-                        const SizedBox(height: 16),
-                        _buildDemographicSummaryCard(),
-                        const SizedBox(height: 16),
-                        _buildPieChartVisualizer(),
-                        const SizedBox(height: 16),
-                        _buildClassDistributionBarChart(),
-                      ],
-                    ),
-                  ),
-          ),
-        ],
-      ),
+      body: _isLoading
+          ? const Center(child: CircularProgressIndicator())
+          : RefreshIndicator(
+              onRefresh: _fetchUnifiedAnalytics,
+              child: ListView(
+                padding: const EdgeInsets.all(16),
+                children: [
+                  _buildControlFilteringMatrix(),
+                  const SizedBox(height: 20),
+                  _buildRealtimeAttendanceRow(),
+                  const SizedBox(height: 20),
+                  _buildDemographicSummaryCard(),
+                  const SizedBox(height: 20),
+                  _buildPieChartVisualizer(),
+                  const SizedBox(height: 20),
+                  _buildClassDistributionBarChart(),
+                  const SizedBox(height: 40),
+                ],
+              ),
+            ),
     );
   }
 
   Widget _buildControlFilteringMatrix() {
-    return Container(
-      color: Colors.white,
-      padding: const EdgeInsets.all(12.0),
+    return Card(
+      elevation: 0,
+      shape: RoundedRectangleBorder(
+        borderRadius: _borderRadius,
+        side: BorderSide(color: Colors.grey.shade200),
+      ),
       child: ExpansionTile(
         initiallyExpanded: true,
         title: const Text(
-          "Search Filters & Parameters",
-          style: TextStyle(fontSize: 14, fontWeight: FontWeight.bold),
+          "Filter Parameters",
+          style: TextStyle(fontWeight: FontWeight.bold),
         ),
-        leading: const Icon(Icons.tune_rounded, color: Colors.blueAccent),
+        leading: const Icon(Icons.filter_list_rounded),
+        shape: const Border(),
+        childrenPadding: const EdgeInsets.all(16),
         children: [
-          Padding(
-            padding: const EdgeInsets.all(8.0),
-            child: Column(
-              children: [
-                // Row 1: Gender & School Year
-                Row(
-                  children: [
-                    Expanded(
-                      child: DropdownButtonFormField<String>(
-                        value: _selectedGender,
-                        decoration: const InputDecoration(
-                          labelText: 'Gender',
-                          border: OutlineInputBorder(),
-                          contentPadding: EdgeInsets.symmetric(
-                            horizontal: 10,
-                            vertical: 12,
-                          ),
-                        ),
-                        items: ['All', 'Male', 'Female']
-                            .map(
-                              (g) => DropdownMenuItem(value: g, child: Text(g)),
-                            )
-                            .toList(),
-                        onChanged: (val) => setState(() {
-                          _selectedGender = val!;
-                          _fetchUnifiedAnalytics();
-                        }),
-                      ),
-                    ),
-                    const SizedBox(width: 8),
-                    Expanded(
-                      child: DropdownButtonFormField<String>(
-                        value: _selectedSchoolYear,
-                        decoration: const InputDecoration(
-                          labelText: 'School Year',
-                          border: OutlineInputBorder(),
-                          contentPadding: EdgeInsets.symmetric(
-                            horizontal: 10,
-                            vertical: 12,
-                          ),
-                        ),
-                        items: ['All', '2024-2025', '2025-2026', '2026-2027']
-                            .map(
-                              (sy) =>
-                                  DropdownMenuItem(value: sy, child: Text(sy)),
-                            )
-                            .toList(),
-                        onChanged: (val) => setState(() {
-                          _selectedSchoolYear = val!;
-                          _fetchUnifiedAnalytics();
-                        }),
-                      ),
-                    ),
-                  ],
+          Row(
+            children: [
+              Expanded(
+                child: DropdownButtonFormField<String>(
+                  value: _selectedGender,
+                  decoration: _inputDecoration.copyWith(labelText: 'Gender'),
+                  items: ['All', 'Male', 'Female']
+                      .map((g) => DropdownMenuItem(value: g, child: Text(g)))
+                      .toList(),
+                  onChanged: (val) => setState(() {
+                    _selectedGender = val!;
+                    _fetchUnifiedAnalytics();
+                  }),
                 ),
-                const SizedBox(height: 12),
-
-                // Row 2: Month & Year (Added missing layout fields to fix stick states)
-                Row(
-                  children: [
-                    Expanded(
-                      child: DropdownButtonFormField<String>(
-                        value: _selectedMonth,
-                        decoration: const InputDecoration(
-                          labelText: 'Month',
-                          border: OutlineInputBorder(),
-                          contentPadding: EdgeInsets.symmetric(
-                            horizontal: 10,
-                            vertical: 12,
-                          ),
-                        ),
-                        items: _monthsList
-                            .map(
-                              (m) => DropdownMenuItem(
-                                value: m['value'],
-                                child: Text(m['label']!),
-                              ),
-                            )
-                            .toList(),
-                        onChanged: (val) => setState(() {
-                          _selectedMonth = val!;
-                          _selectedDate =
-                              null; // Clear day selection to avoid collision
-                          _fetchUnifiedAnalytics();
-                        }),
-                      ),
-                    ),
-                    const SizedBox(width: 8),
-                    Expanded(
-                      child: DropdownButtonFormField<String>(
-                        value: _selectedYear,
-                        decoration: const InputDecoration(
-                          labelText: 'Year',
-                          border: OutlineInputBorder(),
-                          contentPadding: EdgeInsets.symmetric(
-                            horizontal: 10,
-                            vertical: 12,
-                          ),
-                        ),
-                        items: ['All', '2024', '2025', '2026', '2027']
-                            .map(
-                              (y) => DropdownMenuItem(value: y, child: Text(y)),
-                            )
-                            .toList(),
-                        onChanged: (val) => setState(() {
-                          _selectedYear = val!;
-                          _selectedDate =
-                              null; // Clear day selection to avoid collision
-                          _fetchUnifiedAnalytics();
-                        }),
-                      ),
-                    ),
-                  ],
+              ),
+              const SizedBox(width: 12),
+              Expanded(
+                child: DropdownButtonFormField<String>(
+                  value: _selectedSchoolYear,
+                  decoration: _inputDecoration.copyWith(labelText: 'SY'),
+                  items: ['All', '2024-2025', '2025-2026']
+                      .map((sy) => DropdownMenuItem(value: sy, child: Text(sy)))
+                      .toList(),
+                  onChanged: (val) => setState(() {
+                    _selectedSchoolYear = val!;
+                    _fetchUnifiedAnalytics();
+                  }),
                 ),
-                const SizedBox(height: 12),
-
-                // Row 3: Calendar Day Selector with Clear Option
-                Row(
-                  children: [
-                    Expanded(
-                      child: OutlinedButton.icon(
-                        icon: const Icon(Icons.calendar_today, size: 18),
-                        label: Text(
-                          _selectedDate == null
-                              ? 'Filter by Day: All'
-                              : DateFormat(
-                                  'MMMM d, yyyy',
-                                ).format(_selectedDate!), // Fixed pattern token
+              ),
+            ],
+          ),
+          const SizedBox(height: 12),
+          Row(
+            children: [
+              Expanded(
+                child: DropdownButtonFormField<String>(
+                  value: _selectedMonth,
+                  decoration: _inputDecoration.copyWith(labelText: 'Month'),
+                  items: _monthsList
+                      .map(
+                        (m) => DropdownMenuItem(
+                          value: m['value'],
+                          child: Text(m['label']!),
                         ),
-                        style: OutlinedButton.styleFrom(
-                          padding: const EdgeInsets.symmetric(
-                            vertical: 16,
-                          ).copyWith(left: 12),
-                          alignment: Alignment.centerLeft,
-                          shape: const RoundedRectangleBorder(
-                            borderRadius: BorderRadius.zero,
-                          ),
-                        ),
-                        onPressed: () async {
-                          DateTime? picked = await showDatePicker(
-                            context: context,
-                            initialDate: _selectedDate ?? DateTime.now(),
-                            firstDate: DateTime(2020),
-                            lastDate: DateTime(2100),
-                          );
-                          if (picked != null) {
-                            setState(() {
-                              _selectedDate = picked;
-                              _selectedMonth =
-                                  'All'; // Avoid target query collisions
-                              _selectedYear = 'All';
-                              _fetchUnifiedAnalytics();
-                            });
-                          }
-                        },
-                      ),
-                    ),
-                    if (_selectedDate != null) ...[
-                      const SizedBox(width: 8),
-                      IconButton(
-                        icon: const Icon(
-                          Icons.clear_rounded,
-                          color: Colors.redAccent,
-                        ),
-                        tooltip: 'Clear Day Filter',
-                        style: IconButton.styleFrom(
-                          side: BorderSide(color: Colors.grey.shade300),
-                          padding: const EdgeInsets.all(14),
-                          shape: const RoundedRectangleBorder(
-                            borderRadius: BorderRadius.zero,
-                          ),
-                        ),
-                        onPressed: () => setState(() {
-                          _selectedDate = null;
-                          _fetchUnifiedAnalytics();
-                        }),
-                      ),
-                    ],
-                  ],
+                      )
+                      .toList(),
+                  onChanged: (val) => setState(() {
+                    _selectedMonth = val!;
+                    _selectedDate = null;
+                    _fetchUnifiedAnalytics();
+                  }),
                 ),
-              ],
-            ),
+              ),
+              const SizedBox(width: 12),
+              Expanded(
+                child: DropdownButtonFormField<String>(
+                  value: _selectedYear,
+                  decoration: _inputDecoration.copyWith(labelText: 'Year'),
+                  items: ['All', '2025', '2026']
+                      .map((y) => DropdownMenuItem(value: y, child: Text(y)))
+                      .toList(),
+                  onChanged: (val) => setState(() {
+                    _selectedYear = val!;
+                    _selectedDate = null;
+                    _fetchUnifiedAnalytics();
+                  }),
+                ),
+              ),
+            ],
           ),
         ],
       ),
@@ -332,22 +228,56 @@ class _StudentDemographicsScreenState extends State<StudentDemographicsScreen> {
       children: [
         Expanded(
           child: _buildMetricTile(
-            title: 'Present This Period',
-            value: '$_presentCount',
-            color: Colors.green.shade600,
-            icon: Icons.check_circle_outline_rounded,
+            'Present',
+            '$_presentCount',
+            Colors.teal,
+            Icons.check_circle_rounded,
           ),
         ),
-        const SizedBox(width: 12),
+        const SizedBox(width: 16),
         Expanded(
           child: _buildMetricTile(
-            title: 'Absent / Unreported',
-            value: '$_absentCount',
-            color: Colors.red.shade600,
-            icon: Icons.remove_circle_outline_rounded,
+            'Absent',
+            '$_absentCount',
+            Colors.redAccent,
+            Icons.cancel_rounded,
           ),
         ),
       ],
+    );
+  }
+
+  Widget _buildMetricTile(
+    String title,
+    String value,
+    Color color,
+    IconData icon,
+  ) {
+    return Container(
+      padding: const EdgeInsets.all(20),
+      decoration: BoxDecoration(
+        color: color.withOpacity(0.1),
+        borderRadius: _borderRadius,
+      ),
+      child: Column(
+        crossAxisAlignment: CrossAxisAlignment.start,
+        children: [
+          Icon(icon, color: color, size: 24),
+          const SizedBox(height: 12),
+          Text(
+            value,
+            style: TextStyle(
+              fontSize: 24,
+              fontWeight: FontWeight.bold,
+              color: color,
+            ),
+          ),
+          Text(
+            title,
+            style: TextStyle(fontSize: 12, color: color.withOpacity(0.8)),
+          ),
+        ],
+      ),
     );
   }
 
@@ -355,30 +285,23 @@ class _StudentDemographicsScreenState extends State<StudentDemographicsScreen> {
     return Card(
       elevation: 0,
       shape: RoundedRectangleBorder(
-        borderRadius: BorderRadius.circular(12),
+        borderRadius: _borderRadius,
         side: BorderSide(color: Colors.grey.shade200),
       ),
       child: Padding(
-        padding: const EdgeInsets.all(16.0),
+        padding: const EdgeInsets.all(20),
         child: Column(
           crossAxisAlignment: CrossAxisAlignment.start,
           children: [
             const Text(
-              'Unique System Enrollment Summary',
-              style: TextStyle(
-                fontWeight: FontWeight.bold,
-                color: Colors.black54,
-              ),
+              'Enrolment Overview',
+              style: TextStyle(fontWeight: FontWeight.bold, fontSize: 16),
             ),
-            const Divider(height: 20),
+            const SizedBox(height: 20),
             Row(
-              mainAxisAlignment: MainAxisAlignment.spaceAround,
+              mainAxisAlignment: MainAxisAlignment.spaceBetween,
               children: [
-                _buildStatSubColumn(
-                  'Total Students',
-                  '$_totalEnrolled',
-                  Colors.blueGrey,
-                ),
+                _buildStatSubColumn('Total', '$_totalEnrolled', Colors.black87),
                 _buildStatSubColumn('Males', '$_males', Colors.blue),
                 _buildStatSubColumn('Females', '$_females', Colors.pink),
               ],
@@ -389,59 +312,65 @@ class _StudentDemographicsScreenState extends State<StudentDemographicsScreen> {
     );
   }
 
+  Widget _buildStatSubColumn(String label, String value, Color color) {
+    return Column(
+      children: [
+        Text(
+          value,
+          style: TextStyle(
+            fontSize: 20,
+            fontWeight: FontWeight.bold,
+            color: color,
+          ),
+        ),
+        const SizedBox(height: 4),
+        Text(
+          label,
+          style: TextStyle(fontSize: 12, color: Colors.grey.shade600),
+        ),
+      ],
+    );
+  }
+
   Widget _buildPieChartVisualizer() {
     return Card(
       elevation: 0,
       shape: RoundedRectangleBorder(
-        borderRadius: BorderRadius.circular(12),
+        borderRadius: _borderRadius,
         side: BorderSide(color: Colors.grey.shade200),
       ),
       child: Padding(
-        padding: const EdgeInsets.all(16.0),
+        padding: const EdgeInsets.all(20),
         child: Column(
+          crossAxisAlignment: CrossAxisAlignment.start,
           children: [
             const Text(
-              'Live Active Headcount Ratio (Attendance Breakdown)',
+              'Attendance Ratio',
               style: TextStyle(fontWeight: FontWeight.bold),
             ),
             const SizedBox(height: 20),
             SizedBox(
-              height: 140,
-              child: (_presentCount == 0 && _absentCount == 0)
-                  ? const Center(
-                      child: Text(
-                        "No tracking records logged for this time scope.",
-                        style: TextStyle(color: Colors.black45),
-                      ),
-                    )
-                  : PieChart(
-                      PieChartData(
-                        sectionsSpace: 4,
-                        centerSpaceRadius: 35,
-                        sections: [
-                          PieChartSectionData(
-                            color: Colors.green,
-                            value: _presentCount.toDouble(),
-                            title: 'P: $_presentCount',
-                            radius: 45,
-                            titleStyle: const TextStyle(
-                              color: Colors.white,
-                              fontWeight: FontWeight.bold,
-                            ),
-                          ),
-                          PieChartSectionData(
-                            color: Colors.red,
-                            value: _absentCount.toDouble(),
-                            title: 'A: $_absentCount',
-                            radius: 45,
-                            titleStyle: const TextStyle(
-                              color: Colors.white,
-                              fontWeight: FontWeight.bold,
-                            ),
-                          ),
-                        ],
-                      ),
+              height: 150,
+              child: PieChart(
+                PieChartData(
+                  sectionsSpace: 2,
+                  centerSpaceRadius: 40,
+                  sections: [
+                    PieChartSectionData(
+                      color: Colors.teal,
+                      value: _presentCount.toDouble(),
+                      title: '',
+                      radius: 30,
                     ),
+                    PieChartSectionData(
+                      color: Colors.redAccent,
+                      value: _absentCount.toDouble(),
+                      title: '',
+                      radius: 30,
+                    ),
+                  ],
+                ),
+              ),
             ),
           ],
         ),
@@ -453,168 +382,83 @@ class _StudentDemographicsScreenState extends State<StudentDemographicsScreen> {
     return Card(
       elevation: 0,
       shape: RoundedRectangleBorder(
-        borderRadius: BorderRadius.circular(12),
+        borderRadius: _borderRadius,
         side: BorderSide(color: Colors.grey.shade200),
       ),
       child: Padding(
-        padding: const EdgeInsets.all(16.0),
+        padding: const EdgeInsets.all(20),
         child: Column(
           crossAxisAlignment: CrossAxisAlignment.start,
           children: [
             const Text(
-              'Enrolled Student Distribution per Class Assignment',
+              'Class Distribution',
               style: TextStyle(fontWeight: FontWeight.bold),
             ),
-            const SizedBox(height: 24),
+            const SizedBox(height: 20),
             SizedBox(
-              height: 180,
-              child: _classMetrics.isEmpty
-                  ? const Center(
-                      child: Text(
-                        "No class configurations match criteria.",
-                        style: TextStyle(color: Colors.black45),
-                      ),
-                    )
-                  : BarChart(
-                      BarChartData(
-                        alignment: BarChartAlignment.spaceAround,
-                        maxY:
-                            _classMetrics
-                                .fold<int>(
-                                  0,
-                                  (max, e) => (e['classCount'] ?? 0) > max
-                                      ? e['classCount']
-                                      : max,
-                                )
-                                .toDouble() +
-                            5,
-                        barGroups: List.generate(_classMetrics.length, (index) {
-                          return BarChartGroupData(
-                            x: index,
-                            barRods: [
-                              BarChartRodData(
-                                toY:
-                                    (_classMetrics[index]['classCount']
-                                                as int? ??
-                                            0)
-                                        .toDouble(),
-                                color: Colors.blueAccent.shade400,
-                                width: 16,
-                                borderRadius: const BorderRadius.vertical(
-                                  top: Radius.circular(4),
-                                ),
-                              ),
-                            ],
-                          );
-                        }),
-                        titlesData: FlTitlesData(
-                          leftTitles: AxisTitles(
-                            sideTitles: SideTitles(
-                              showTitles: true,
-                              reservedSize: 30,
-                            ),
-                          ),
-                          bottomTitles: AxisTitles(
-                            sideTitles: SideTitles(
-                              showTitles: true,
-                              getTitlesWidget: (val, meta) {
-                                int i = val.toInt();
-                                if (i >= 0 && i < _classMetrics.length) {
-                                  return Padding(
-                                    padding: const EdgeInsets.only(top: 6.0),
-                                    child: Text(
-                                      _classMetrics[i]['className']
-                                              ?.toString() ??
-                                          '',
-                                      style: const TextStyle(
-                                        fontSize: 10,
-                                        fontWeight: FontWeight.w500,
-                                      ),
-                                    ),
-                                  );
-                                }
-                                return const Text('');
-                              },
-                            ),
-                          ),
-                          topTitles: const AxisTitles(
-                            sideTitles: SideTitles(showTitles: false),
-                          ),
-                          rightTitles: const AxisTitles(
-                            sideTitles: SideTitles(showTitles: false),
-                          ),
+              height: 200,
+              child: BarChart(
+                BarChartData(
+                  barGroups: List.generate(_classMetrics.length, (index) {
+                    return BarChartGroupData(
+                      x: index,
+                      barRods: [
+                        BarChartRodData(
+                          toY: (_classMetrics[index]['classCount'] as int? ?? 0)
+                              .toDouble(),
+                          color: Colors.indigo,
+                          width: 20,
+                          borderRadius: BorderRadius.circular(4),
                         ),
-                        gridData: const FlGridData(show: false),
-                        borderData: FlBorderData(show: false),
+                      ],
+                    );
+                  }),
+                  gridData: const FlGridData(show: false),
+                  borderData: FlBorderData(show: false),
+                  // ... inside _buildClassDistributionBarChart
+                  titlesData: FlTitlesData(
+                    leftTitles: const AxisTitles(
+                      sideTitles: SideTitles(showTitles: false),
+                    ),
+                    bottomTitles: AxisTitles(
+                      // INCREASE reservedSize so the rotated labels aren't clipped
+                      sideTitles: SideTitles(
+                        showTitles: true,
+                        reservedSize:
+                            40, // Adjust this value to accommodate your label length
+                        getTitlesWidget: (val, meta) {
+                          final label = _classMetrics[val.toInt()]['className']
+                              .toString();
+
+                          return SideTitleWidget(
+                            axisSide: meta.axisSide,
+                            child: Transform.rotate(
+                              angle:
+                                  -0.5, // Adjust rotation angle (e.g., -0.5 radians ≈ -28 degrees)
+                              child: Text(
+                                label,
+                                style: const TextStyle(fontSize: 10),
+                                overflow: TextOverflow.ellipsis,
+                              ),
+                            ),
+                          );
+                        },
                       ),
                     ),
+                    topTitles: const AxisTitles(
+                      sideTitles: SideTitles(showTitles: false),
+                    ),
+                    rightTitles: const AxisTitles(
+                      sideTitles: SideTitles(showTitles: false),
+                    ),
+                  ),
+                  // ...
+                ),
+              ),
             ),
           ],
         ),
       ),
-    );
-  }
-
-  Widget _buildMetricTile({
-    required String title,
-    required String value,
-    required Color color,
-    required IconData icon,
-  }) {
-    return Container(
-      padding: const EdgeInsets.all(16),
-      decoration: BoxDecoration(
-        color: color.withOpacity(0.08),
-        borderRadius: BorderRadius.circular(12),
-        border: Border.all(color: color.withOpacity(0.2)),
-      ),
-      child: Row(
-        children: [
-          Icon(icon, color: color, size: 28),
-          const SizedBox(width: 12),
-          Column(
-            crossAxisAlignment: CrossAxisAlignment.start,
-            children: [
-              Text(
-                title,
-                style: TextStyle(
-                  fontSize: 11,
-                  color: color,
-                  fontWeight: FontWeight.w600,
-                ),
-              ),
-              Text(
-                value,
-                style: TextStyle(
-                  fontSize: 22,
-                  fontWeight: FontWeight.bold,
-                  color: color,
-                ),
-              ),
-            ],
-          ),
-        ],
-      ),
-    );
-  }
-
-  Widget _buildStatSubColumn(String label, String value, Color textTheme) {
-    return Column(
-      children: [
-        Text(
-          value,
-          style: TextStyle(
-            fontSize: 24,
-            fontWeight: FontWeight.bold,
-            color: textTheme,
-          ),
-        ),
-        const SizedBox(height: 2),
-        Text(
-          label,
-          style: TextStyle(fontSize: 12, color: Colors.grey.shade500),
-        ),
-      ],
     );
   }
 }

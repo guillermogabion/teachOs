@@ -14,9 +14,41 @@ import '../settings/screens/backup_settings_screen.dart';
 
 import 'package:geolocator/geolocator.dart';
 import 'dart:convert';
-import 'package:flutter/services.dart';
 import 'package:http/http.dart' as http;
 import 'package:geocoding/geocoding.dart';
+
+// ─── Brand palette ────────────────────────────────────────────────────────────
+class _Brand {
+  static const tealDark = Color(0xFF085041);
+  static const tealMid = Color(0xFF0F6E56);
+  static const teal = Color(0xFF1D9E75);
+  static const tealLight = Color(0xFF5DCAA5);
+  static const tealSurf = Color(0xFFEAF8F3);
+  static const tealBorder = Color(0xFF9FE1CB);
+
+  static const blueSurf = Color(0xFFE6F1FB);
+  static const blueText = Color(0xFF185FA5);
+
+  static const purpleSurf = Color(0xFFEEEDFE);
+  static const purpleText = Color(0xFF534AB7);
+
+  static const pinkSurf = Color(0xFFFBEAF0);
+  static const pinkText = Color(0xFF993556);
+
+  static const greenSurf = Color(0xFFEAF3DE);
+  static const greenText = Color(0xFF3B6D11);
+
+  static const amberSurf = Color(0xFFFAEEDA);
+  static const amberText = Color(0xFF854F0B);
+
+  static const graySurf = Color(0xFFF1EFE8);
+  static const grayText = Color(0xFF444441);
+
+  static const redSurf = Color(0xFFFCEBEB);
+  static const redText = Color(0xFFA32D2D);
+  static const redBorder = Color(0xFFF09595);
+}
+// ─────────────────────────────────────────────────────────────────────────────
 
 class DashboardScreen extends StatefulWidget {
   const DashboardScreen({super.key});
@@ -30,16 +62,15 @@ class _DashboardScreenState extends State<DashboardScreen> {
   int _presentCount = 0;
   int _absentCount = 0;
   bool _loading = true;
-  int _bottomNavIndex = 0;
 
-  // Weather & Calendar States
   DateTime _currentDate = DateTime.now();
+
+  // Weather
   String _weatherCondition = 'Loading...';
   String _temperature = '--°C';
   IconData _weatherIcon = Icons.cloud_queue_rounded;
   bool _weatherLoading = false;
-
-  String _locationName = 'Detecting location...';
+  String _locationName = 'Detecting location…';
 
   @override
   void initState() {
@@ -48,9 +79,10 @@ class _DashboardScreenState extends State<DashboardScreen> {
     _fetchRealWeather();
   }
 
+  // ── Data ───────────────────────────────────────────────────────────────────
+
   Future<void> _fetchStats() async {
     final targetDateStr = _currentDate.toIso8601String().split('T')[0];
-
     try {
       final stats = await _attendanceRepo.getDailyAttendanceStats(
         targetDateStr,
@@ -64,39 +96,7 @@ class _DashboardScreenState extends State<DashboardScreen> {
       }
     } catch (e) {
       debugPrint('Error loading dashboard metrics: $e');
-      if (mounted) {
-        setState(() => _loading = false);
-      }
-    }
-  }
-
-  Future<void> _selectDate(BuildContext context) async {
-    final DateTime? picked = await showDatePicker(
-      context: context,
-      initialDate: _currentDate,
-      firstDate: DateTime(2020),
-      lastDate: DateTime(2030),
-      builder: (context, child) {
-        return Theme(
-          data: Theme.of(context).copyWith(
-            colorScheme: const ColorScheme.light(
-              primary: Colors.teal,
-              onPrimary: Colors.white,
-              onSurface: Colors.black87,
-            ),
-          ),
-          child: child!,
-        );
-      },
-    );
-
-    if (picked != null && picked != _currentDate) {
-      setState(() {
-        _currentDate = picked;
-        _loading = true;
-      });
-      _fetchRealWeather();
-      _fetchStats();
+      if (mounted) setState(() => _loading = false);
     }
   }
 
@@ -104,34 +104,11 @@ class _DashboardScreenState extends State<DashboardScreen> {
     if (_weatherLoading) return;
     setState(() => _weatherLoading = true);
 
-    final position = await Geolocator.getCurrentPosition(
-      desiredAccuracy: LocationAccuracy.low,
-      timeLimit: const Duration(seconds: 10),
-    );
-
-    try {
-      List<Placemark> placemarks = await placemarkFromCoordinates(
-        position.latitude,
-        position.longitude,
-      );
-      if (placemarks.isNotEmpty) {
-        final place = placemarks.first;
-        setState(() {
-          // Combines City and Country
-          _locationName =
-              '${place.locality ?? place.subAdministrativeArea}, ${place.country}';
-        });
-      }
-    } catch (e) {
-      setState(() => _locationName = 'Location unavailable');
-    }
-
     try {
       LocationPermission permission = await Geolocator.checkPermission();
       if (permission == LocationPermission.denied) {
         permission = await Geolocator.requestPermission();
       }
-
       if (permission == LocationPermission.deniedForever ||
           permission == LocationPermission.denied) {
         _setFallbackWeather();
@@ -143,6 +120,24 @@ class _DashboardScreenState extends State<DashboardScreen> {
         timeLimit: const Duration(seconds: 10),
       );
 
+      // Reverse geocode
+      try {
+        final placemarks = await placemarkFromCoordinates(
+          position.latitude,
+          position.longitude,
+        );
+        if (placemarks.isNotEmpty && mounted) {
+          final p = placemarks.first;
+          setState(() {
+            _locationName =
+                '${p.locality ?? p.subAdministrativeArea ?? '?'}, ${p.country ?? ''}';
+          });
+        }
+      } catch (_) {
+        if (mounted) setState(() => _locationName = 'Location unavailable');
+      }
+
+      // Weather API
       final url = Uri.parse(
         'https://api.open-meteo.com/v1/forecast'
         '?latitude=${position.latitude}'
@@ -150,14 +145,11 @@ class _DashboardScreenState extends State<DashboardScreen> {
         '&current=temperature_2m,weathercode'
         '&temperature_unit=celsius',
       );
-
       final response = await http.get(url).timeout(const Duration(seconds: 10));
-
       if (response.statusCode == 200) {
         final data = jsonDecode(response.body);
         final temp = data['current']['temperature_2m'] as num;
         final code = data['current']['weathercode'] as int;
-
         if (mounted) {
           setState(() {
             _temperature = '${temp.toStringAsFixed(0)}°C';
@@ -186,122 +178,226 @@ class _DashboardScreenState extends State<DashboardScreen> {
     }
   }
 
-  String _wmoCodeToLabel(int code) {
-    if (code == 0) return 'Clear Sky';
-    if (code <= 2) return 'Partly Cloudy';
-    if (code == 3) return 'Overcast';
-    if (code <= 49) return 'Foggy';
-    if (code <= 59) return 'Drizzling';
-    if (code <= 69) return 'Raining';
-    if (code <= 79) return 'Snowing';
-    if (code <= 82) return 'Rain Showers';
-    if (code <= 84) return 'Hail Showers';
-    if (code <= 99) return 'Thunderstorm';
+  String _wmoCodeToLabel(int c) {
+    if (c == 0) return 'Clear Sky';
+    if (c <= 2) return 'Partly Cloudy';
+    if (c == 3) return 'Overcast';
+    if (c <= 49) return 'Foggy';
+    if (c <= 59) return 'Drizzle';
+    if (c <= 69) return 'Raining';
+    if (c <= 79) return 'Snowing';
+    if (c <= 82) return 'Rain Showers';
+    if (c <= 84) return 'Hail Showers';
+    if (c <= 99) return 'Thunderstorm';
     return 'Unknown';
   }
 
-  IconData _wmoCodeToIcon(int code) {
-    if (code == 0) return Icons.wb_sunny_rounded;
-    if (code <= 2) return Icons.wb_cloudy_rounded;
-    if (code == 3) return Icons.cloud_rounded;
-    if (code <= 49) return Icons.foggy;
-    if (code <= 69) return Icons.grain_rounded;
-    if (code <= 79) return Icons.ac_unit_rounded;
-    if (code <= 82) return Icons.umbrella_rounded;
-    if (code <= 99) return Icons.thunderstorm_rounded;
+  IconData _wmoCodeToIcon(int c) {
+    if (c == 0) return Icons.wb_sunny_rounded;
+    if (c <= 2) return Icons.wb_cloudy_rounded;
+    if (c == 3) return Icons.cloud_rounded;
+    if (c <= 49) return Icons.foggy;
+    if (c <= 69) return Icons.grain_rounded;
+    if (c <= 79) return Icons.ac_unit_rounded;
+    if (c <= 82) return Icons.umbrella_rounded;
+    if (c <= 99) return Icons.thunderstorm_rounded;
     return Icons.cloud_queue_rounded;
   }
 
-  // Define Quick Access Menu Items
-  List<Map<String, dynamic>> _getQuickAccessItems() {
-    return [
-      {
-        'title': 'Students (SiS)',
-        'icon': Icons.people_alt_rounded,
-        'color': Colors.blue.shade400,
-        'screen': const StudentListScreen(),
-      },
-      {
-        'title': 'Attendance',
-        'icon': Icons.check_circle_outline_rounded,
-        'color': Colors.green.shade400,
-        'screen': const AttendanceRecordsScreen(),
-      },
-      {
-        'title': 'Gradebook',
-        'icon': Icons.menu_book_rounded,
-        'color': Colors.purple.shade300,
-        'screen': const GradebookScreen(),
-      },
-      {
-        'title': 'Assessments',
-        'icon': Icons.assignment_rounded,
-        'color': Colors.pink.shade300,
-        'screen': const AssessmentBuilderScreen(),
-      },
-      {
-        'title': 'Assignments',
-        'icon': Icons.assignment_turned_in_rounded,
-        'color': Colors.green.shade600,
-        'screen':
-            const AssignmentHubScreen(), // Assuming this exists based on imports
-      },
-      {
-        'title': 'Calendar',
-        'icon': Icons.calendar_month_rounded,
-        'color': Colors.blueAccent.shade200,
-        'screen': const SchoolCalendarScreen(),
-      },
-      {
-        'title': 'Class Mgmt.',
-        'icon': Icons.co_present_rounded,
-        'color': Colors.blue.shade700,
-        'screen': const ClassManagementScreen(),
-      },
-      {
-        'title': 'Random Picker',
-        'icon': Icons
-            .content_paste_rounded, // Replaced casino icon to match image vibe
-        'color': Colors.orange.shade400,
-        'screen': const RandomStudentPickerScreen(),
-      },
-      {
-        'title': 'Demographics',
-        'icon': Icons.pie_chart_outline_rounded,
-        'color': Colors.teal.shade400,
-        'screen': const StudentDemographicsScreen(),
-      },
-      {
-        'title': 'Backup & Settings',
-        'icon': Icons.settings_outlined,
-        'color': Colors.grey.shade700,
-        'screen': const BackupSettingsScreen(),
-      },
-    ];
+  // ── Date Picker ────────────────────────────────────────────────────────────
+
+  Future<void> _selectDate(BuildContext context) async {
+    final DateTime? picked = await showDatePicker(
+      context: context,
+      initialDate: _currentDate,
+      firstDate: DateTime(2020),
+      lastDate: DateTime(2030),
+      builder: (context, child) => Theme(
+        data: Theme.of(context).copyWith(
+          colorScheme: const ColorScheme.light(
+            primary: _Brand.teal,
+            onPrimary: Colors.white,
+            onSurface: Colors.black87,
+          ),
+        ),
+        child: child!,
+      ),
+    );
+
+    if (picked != null && picked != _currentDate) {
+      setState(() {
+        _currentDate = picked;
+        _loading = true;
+      });
+      _fetchStats();
+    }
   }
+
+  // ── Quick Access Items ─────────────────────────────────────────────────────
+
+  List<_QAItem> get _quickAccessItems => [
+    _QAItem(
+      'Class Mgmt.',
+      'Sections',
+      Icons.co_present_rounded,
+      _Brand.amberSurf,
+      _Brand.amberText,
+      const ClassManagementScreen(),
+    ),
+    _QAItem(
+      'Students',
+      'SIS records',
+      Icons.people_alt_rounded,
+      _Brand.blueSurf,
+      _Brand.blueText,
+      const StudentListScreen(),
+    ),
+    _QAItem(
+      'Attendance',
+      'Daily logs',
+      Icons.check_circle_outline_rounded,
+      _Brand.tealSurf,
+      _Brand.tealMid,
+      const AttendanceRecordsScreen(),
+    ),
+    _QAItem(
+      'Gradebook',
+      'Scores',
+      Icons.menu_book_rounded,
+      _Brand.purpleSurf,
+      _Brand.purpleText,
+      const GradebookScreen(),
+    ),
+    _QAItem(
+      'Assessments',
+      'Builder',
+      Icons.assignment_rounded,
+      _Brand.pinkSurf,
+      _Brand.pinkText,
+      const AssessmentBuilderScreen(),
+    ),
+    _QAItem(
+      'Assignments',
+      'Hub',
+      Icons.assignment_turned_in_rounded,
+      _Brand.greenSurf,
+      _Brand.greenText,
+      const AssignmentHubScreen(),
+    ),
+    _QAItem(
+      'Calendar',
+      'Events',
+      Icons.calendar_month_rounded,
+      _Brand.blueSurf,
+      _Brand.blueText,
+      const SchoolCalendarScreen(),
+    ),
+    _QAItem(
+      'Random Picker',
+      'Students',
+      Icons.shuffle_rounded,
+      _Brand.tealSurf,
+      _Brand.tealMid,
+      const RandomStudentPickerScreen(),
+    ),
+    _QAItem(
+      'Demographics',
+      'Overview',
+      Icons.pie_chart_outline_rounded,
+      _Brand.purpleSurf,
+      _Brand.purpleText,
+      const StudentDemographicsScreen(),
+    ),
+    _QAItem(
+      'Settings',
+      'Backup',
+      Icons.settings_outlined,
+      _Brand.graySurf,
+      _Brand.grayText,
+      const BackupSettingsScreen(),
+    ),
+  ];
+
+  // ── Build ──────────────────────────────────────────────────────────────────
 
   @override
   Widget build(BuildContext context) {
     if (_loading) {
-      return const Scaffold(body: Center(child: CircularProgressIndicator()));
+      return const Scaffold(
+        backgroundColor: Colors.white,
+        body: Center(child: CircularProgressIndicator(color: _Brand.teal)),
+      );
     }
 
-    String localizedDateStr = DateFormat('MMM d, yyyy').format(_currentDate);
-    String weekdayStr = DateFormat('EEEE').format(_currentDate);
-    int total = _presentCount + _absentCount;
-    double percentage = total > 0 ? (_presentCount / total * 100) : 0.0;
+    final int total = _presentCount + _absentCount;
+    final double percentage = total > 0 ? (_presentCount / total * 100) : 0.0;
+    final String dateLabel = DateFormat('MMM d, yyyy').format(_currentDate);
+    final String weekday = DateFormat('EEEE').format(_currentDate);
 
     return Scaffold(
       backgroundColor: Colors.white,
-      appBar: AppBar(
-        title: Padding(
-          padding: const EdgeInsets.only(right: 16.0),
-          child: Row(
-            mainAxisAlignment: MainAxisAlignment.spaceBetween,
+      appBar: _buildAppBar(),
+      body: RefreshIndicator(
+        onRefresh: () async {
+          setState(() => _currentDate = DateTime.now());
+          _fetchRealWeather();
+          await _fetchStats();
+        },
+        color: _Brand.teal,
+        child: SingleChildScrollView(
+          physics: const AlwaysScrollableScrollPhysics(),
+          padding: const EdgeInsets.symmetric(horizontal: 20, vertical: 16),
+          child: Column(
+            crossAxisAlignment: CrossAxisAlignment.start,
             children: [
-              Row(
-                children: [
-                  Image.asset(
+              _buildDateHeader(context, dateLabel, weekday),
+              const SizedBox(height: 16),
+              _buildWeatherCard(),
+              const SizedBox(height: 14),
+              _buildAttendanceMetricCard(total, percentage),
+              const SizedBox(height: 24),
+              _buildSectionLabel('Quick Access'),
+              const SizedBox(height: 12),
+              _buildQuickAccessList(context),
+              const SizedBox(height: 24),
+            ],
+          ),
+        ),
+      ),
+    );
+  }
+
+  // ── AppBar ─────────────────────────────────────────────────────────────────
+
+  PreferredSizeWidget _buildAppBar() {
+    return AppBar(
+      backgroundColor: Colors.white,
+      elevation: 0,
+      surfaceTintColor: Colors.transparent,
+      bottom: PreferredSize(
+        preferredSize: const Size.fromHeight(0.5),
+        child: Divider(
+          height: 0.5,
+          thickness: 0.5,
+          color: Colors.grey.shade200,
+        ),
+      ),
+      title: Padding(
+        padding: const EdgeInsets.only(right: 4),
+        child: Row(
+          mainAxisAlignment: MainAxisAlignment.spaceBetween,
+          children: [
+            // Logo + name
+            Row(
+              children: [
+                Container(
+                  width: 30,
+                  height: 30,
+                  decoration: BoxDecoration(
+                    color: _Brand.tealMid,
+                    borderRadius: BorderRadius.circular(8),
+                  ),
+                  child: Image.asset(
                     'assets/icon/teachOs_logo.png',
                     width: 28,
                     height: 28,
@@ -311,313 +407,106 @@ class _DashboardScreenState extends State<DashboardScreen> {
                       size: 20,
                     ),
                   ),
-                  const SizedBox(width: 8),
-                  const Text(
-                    'teachOS',
-                    style: TextStyle(
-                      fontWeight: FontWeight.w800,
-                      color: Colors.black87,
-                      fontSize: 22,
-                    ),
+                ),
+                const SizedBox(width: 9),
+                const Text(
+                  'teachOS',
+                  style: TextStyle(
+                    fontWeight: FontWeight.w700,
+                    color: Colors.black87,
+                    fontSize: 19,
+                    letterSpacing: -0.3,
                   ),
-                ],
-              ),
-              Column(
-                mainAxisAlignment: MainAxisAlignment.center,
-                crossAxisAlignment: CrossAxisAlignment.end,
-                children: [
-                  const Text(
-                    'powered by',
-                    style: TextStyle(
-                      fontSize: 8,
-                      color: Color.fromARGB(255, 9, 59, 54),
-                      letterSpacing: 0.5,
-                    ),
+                ),
+              ],
+            ),
+            // Powered by
+            Column(
+              crossAxisAlignment: CrossAxisAlignment.end,
+              mainAxisAlignment: MainAxisAlignment.center,
+              children: const [
+                Text(
+                  'powered by',
+                  style: TextStyle(
+                    fontSize: 9,
+                    color: Colors.black38,
+                    letterSpacing: 0.4,
                   ),
-                  const Text(
-                    'XIENTECH',
-                    style: TextStyle(
-                      fontSize: 11,
-                      fontWeight: FontWeight.bold,
-                      color: Color.fromARGB(255, 9, 59, 54),
-                      letterSpacing: 0.8,
-                    ),
+                ),
+                Text(
+                  'XIENTECH',
+                  style: TextStyle(
+                    fontSize: 11,
+                    fontWeight: FontWeight.w700,
+                    color: _Brand.tealMid,
+                    letterSpacing: 1.0,
                   ),
-                ],
-              ),
-            ],
-          ),
+                ),
+              ],
+            ),
+          ],
         ),
       ),
-      body: RefreshIndicator(
-        onRefresh: () async {
-          setState(() => _currentDate = DateTime.now());
-          _fetchRealWeather();
-          await _fetchStats();
-        },
-        color: Colors.teal,
-        child: SingleChildScrollView(
-          physics: const AlwaysScrollableScrollPhysics(),
-          padding: const EdgeInsets.symmetric(horizontal: 20.0, vertical: 10.0),
-          child: Column(
-            crossAxisAlignment: CrossAxisAlignment.start,
-            children: [
-              // Date Header
-              GestureDetector(
-                onTap: () => _selectDate(context),
-                child: Column(
-                  crossAxisAlignment: CrossAxisAlignment.start,
-                  children: [
-                    const Text(
-                      'Today',
-                      style: TextStyle(
-                        fontSize: 24,
-                        fontWeight: FontWeight.bold,
-                        color: Colors.black87,
-                      ),
-                    ),
-                    const SizedBox(height: 4),
-                    Text(
-                      '$localizedDateStr • $weekdayStr',
-                      style: TextStyle(
-                        fontSize: 14,
-                        color: Colors.grey.shade600,
-                        fontWeight: FontWeight.w500,
-                      ),
-                    ),
-                  ],
-                ),
-              ),
-              const SizedBox(height: 16),
-
-              // Weather Card
-              _buildWeatherCard(),
-              const SizedBox(height: 24),
-
-              // Attendance Section Header
-              Row(
-                mainAxisAlignment: MainAxisAlignment.spaceBetween,
-                children: [
-                  const Text(
-                    "Today's Attendance",
-                    style: TextStyle(
-                      fontSize: 16,
-                      fontWeight: FontWeight.bold,
-                      color: Colors.black87,
-                    ),
-                  ),
-                  GestureDetector(
-                    onTap: () {
-                      Navigator.push(
-                        context,
-                        MaterialPageRoute(
-                          builder: (context) => const AttendanceRecordsScreen(),
-                        ),
-                      );
-                    },
-                    child: Text(
-                      "View all",
-                      style: TextStyle(
-                        fontSize: 14,
-                        fontWeight: FontWeight.bold,
-                        color: Colors.teal.shade600,
-                      ),
-                    ),
-                  ),
-                ],
-              ),
-              const SizedBox(height: 12),
-
-              // Attendance Cards (Present / Absent)
-              Card(
-                elevation: 2,
-                margin: const EdgeInsets.symmetric(vertical: 10),
-                shape: RoundedRectangleBorder(
-                  borderRadius: BorderRadius.circular(16),
-                ),
-                color: Colors.white,
-                child: Padding(
-                  padding: const EdgeInsets.all(20.0),
-                  child: Row(
-                    children: [
-                      Expanded(
-                        child: Column(
-                          crossAxisAlignment: CrossAxisAlignment.start,
-                          children: [
-                            const Text(
-                              'Selected Date Attendance Metric',
-                              style: TextStyle(
-                                color: Colors.black54,
-                                fontSize: 13,
-                              ),
-                            ),
-                            const SizedBox(height: 4),
-                            Text(
-                              total > 0
-                                  ? '${percentage.toStringAsFixed(1)}%'
-                                  : 'No Logs Registered',
-                              style: const TextStyle(
-                                color: Colors.black87,
-                                fontSize: 32,
-                                fontWeight: FontWeight.bold,
-                              ),
-                            ),
-                            const SizedBox(height: 4),
-                            Text(
-                              total > 0
-                                  ? '$_presentCount present out of $total tracked records.'
-                                  : 'No registry markers found for this target timeline split.',
-                              style: const TextStyle(
-                                color: Colors.black54,
-                                fontSize: 12,
-                              ),
-                            ),
-                          ],
-                        ),
-                      ),
-                      const SizedBox(width: 16),
-                      const Icon(
-                        Icons.analytics_outlined,
-                        color: Colors.teal,
-                        size: 56,
-                      ),
-                    ],
-                  ),
-                ),
-              ),
-              const SizedBox(height: 24),
-
-              // Quick Access Header
-              const Text(
-                "Quick Access",
-                style: TextStyle(
-                  fontSize: 16,
-                  fontWeight: FontWeight.bold,
-                  color: Colors.black87,
-                ),
-              ),
-              const SizedBox(height: 16),
-
-              // Responsive Quick Access Grid
-              LayoutBuilder(
-                builder: (context, constraints) {
-                  // Adjust columns based on available width
-                  int crossAxisCount = 3; // Mobile default
-                  if (constraints.maxWidth > 600) crossAxisCount = 4; // Tablet
-                  if (constraints.maxWidth > 900)
-                    crossAxisCount = 6; // Small Desktop
-                  if (constraints.maxWidth > 1200)
-                    crossAxisCount = 8; // Large Desktop
-
-                  final items = _getQuickAccessItems();
-
-                  return GridView.builder(
-                    shrinkWrap: true,
-                    physics: const NeverScrollableScrollPhysics(),
-                    gridDelegate: SliverGridDelegateWithFixedCrossAxisCount(
-                      crossAxisCount: crossAxisCount,
-                      crossAxisSpacing: 12,
-                      mainAxisSpacing: 12,
-                      childAspectRatio:
-                          0.9, // Adjust ratio for square/rectangle card
-                    ),
-                    itemCount: items.length,
-                    itemBuilder: (context, index) {
-                      final item = items[index];
-                      return _buildGridItem(
-                        title: item['title'],
-                        icon: item['icon'],
-                        color: item['color'],
-                        onTap: () {
-                          if (item['screen'] != null) {
-                            Navigator.push(
-                              context,
-                              MaterialPageRoute(
-                                builder: (context) => item['screen'],
-                              ),
-                            ).then((_) => _fetchStats());
-                          }
-                        },
-                      );
-                    },
-                  );
-                },
-              ),
-              const SizedBox(height: 20),
-            ],
-          ),
-        ),
-      ),
-
-      // Bottom Navigation Bar Implementation matching the image
-      // bottomNavigationBar: BottomNavigationBar(
-      //   currentIndex: _bottomNavIndex,
-      //   onTap: (index) {
-      //     setState(() {
-      //       _bottomNavIndex = index;
-      //     });
-      //   },
-      //   selectedItemColor: Colors.teal.shade700,
-      //   unselectedItemColor: Colors.grey.shade500,
-      //   showSelectedLabels: true,
-      //   showUnselectedLabels: true,
-      //   selectedLabelStyle: const TextStyle(
-      //     fontWeight: FontWeight.bold,
-      //     fontSize: 12,
-      //   ),
-      //   unselectedLabelStyle: const TextStyle(
-      //     fontWeight: FontWeight.normal,
-      //     fontSize: 12,
-      //   ),
-      //   type: BottomNavigationBarType.fixed,
-      //   backgroundColor: Colors.white,
-      //   elevation: 8,
-      //   items: [
-      //     BottomNavigationBarItem(
-      //       icon: Container(
-      //         padding: const EdgeInsets.symmetric(horizontal: 20, vertical: 6),
-      //         decoration: BoxDecoration(
-      //           color: _bottomNavIndex == 0
-      //               ? Colors.teal.shade600
-      //               : Colors.transparent,
-      //           borderRadius: BorderRadius.circular(20),
-      //         ),
-      //         child: Icon(
-      //           Icons.home_rounded,
-      //           color: _bottomNavIndex == 0
-      //               ? Colors.white
-      //               : Colors.grey.shade500,
-      //         ),
-      //       ),
-      //       label: 'Dashboard',
-      //     ),
-      //     const BottomNavigationBarItem(
-      //       icon: Padding(
-      //         padding: EdgeInsets.symmetric(vertical: 6.0),
-      //         child: Icon(Icons.calendar_today_rounded),
-      //       ),
-      //       label: 'Calendar',
-      //     ),
-      //     const BottomNavigationBarItem(
-      //       icon: Padding(
-      //         padding: EdgeInsets.symmetric(vertical: 6.0),
-      //         child: Icon(Icons.more_horiz_rounded),
-      //       ),
-      //       label: 'More',
-      //     ),
-      //   ],
-      // ),
     );
   }
 
-  // --- UI Builder Methods ---
+  // ── Date Header ────────────────────────────────────────────────────────────
+
+  Widget _buildDateHeader(
+    BuildContext context,
+    String dateLabel,
+    String weekday,
+  ) {
+    return GestureDetector(
+      onTap: () => _selectDate(context),
+      behavior: HitTestBehavior.opaque,
+      child: Column(
+        crossAxisAlignment: CrossAxisAlignment.start,
+        children: [
+          Row(
+            children: [
+              Text(
+                '$dateLabel · $weekday',
+                style: const TextStyle(
+                  fontSize: 18,
+                  fontWeight: FontWeight.w600,
+                  color: Colors.black87,
+                  letterSpacing: -0.2,
+                ),
+              ),
+              const SizedBox(width: 6),
+              const Icon(
+                Icons.calendar_today_rounded,
+                size: 16,
+                color: _Brand.teal,
+              ),
+            ],
+          ),
+          const SizedBox(height: 4),
+          Row(
+            children: const [
+              Icon(Icons.touch_app_rounded, size: 12, color: _Brand.teal),
+              SizedBox(width: 4),
+              Text(
+                'Tap to change date',
+                style: TextStyle(fontSize: 11, color: _Brand.teal),
+              ),
+            ],
+          ),
+        ],
+      ),
+    );
+  }
+
+  // ── Weather Card ───────────────────────────────────────────────────────────
 
   Widget _buildWeatherCard() {
     return Container(
-      padding: const EdgeInsets.all(20),
+      padding: const EdgeInsets.symmetric(horizontal: 18, vertical: 16),
       decoration: BoxDecoration(
-        color: Colors.blue.shade50,
-        borderRadius: BorderRadius.circular(16),
+        color: _Brand.tealSurf,
+        borderRadius: BorderRadius.circular(14),
+        border: Border.all(color: _Brand.tealBorder, width: 0.8),
       ),
       child: Row(
         mainAxisAlignment: MainAxisAlignment.spaceBetween,
@@ -627,151 +516,297 @@ class _DashboardScreenState extends State<DashboardScreen> {
             children: [
               _weatherLoading
                   ? const SizedBox(
-                      width: 20,
-                      height: 20,
-                      child: CircularProgressIndicator(strokeWidth: 2),
+                      width: 18,
+                      height: 18,
+                      child: CircularProgressIndicator(
+                        strokeWidth: 2,
+                        color: _Brand.tealMid,
+                      ),
                     )
                   : Text(
                       _temperature,
                       style: const TextStyle(
-                        fontSize: 28,
-                        fontWeight: FontWeight.bold,
-                        color: Colors.black87,
+                        fontSize: 26,
+                        fontWeight: FontWeight.w600,
+                        color: _Brand.tealDark,
                       ),
                     ),
-              const SizedBox(height: 4),
+              const SizedBox(height: 3),
               Text(
                 _weatherCondition,
-                style: TextStyle(
-                  fontSize: 14,
-                  color: Colors.blueGrey.shade700,
-                  fontWeight: FontWeight.w500,
-                ),
+                style: const TextStyle(fontSize: 13, color: _Brand.tealMid),
               ),
               const SizedBox(height: 8),
               Row(
                 children: [
-                  Icon(
+                  const Icon(
                     Icons.location_on_outlined,
-                    size: 14,
-                    color: Colors.grey.shade600,
+                    size: 13,
+                    color: _Brand.teal,
                   ),
-                  const SizedBox(width: 4),
+                  const SizedBox(width: 3),
                   Text(
-                    _locationName, // Replace "Manila, Philippines" with this variable
-                    style: TextStyle(fontSize: 12, color: Colors.grey.shade600),
+                    _locationName,
+                    style: const TextStyle(fontSize: 11, color: _Brand.teal),
                   ),
                 ],
               ),
             ],
           ),
-          // Weather Icon Area
-          Icon(_weatherIcon, size: 64, color: Colors.orange.shade400),
+          Container(
+            width: 54,
+            height: 54,
+            decoration: const BoxDecoration(
+              color: Color(0xFFC8F0E3),
+              shape: BoxShape.circle,
+            ),
+            child: Icon(_weatherIcon, size: 28, color: _Brand.tealMid),
+          ),
         ],
       ),
     );
   }
 
-  Widget _buildAttendanceCard({
-    required String title,
-    required String count,
-    required IconData icon,
-    required Color color,
-    required Color bgColor,
-  }) {
+  // ── Attendance Metric Card ─────────────────────────────────────────────────
+
+  Widget _buildAttendanceMetricCard(int total, double percentage) {
+    final bool hasData = total > 0;
+    final String dateLabel = DateFormat('MMM d').format(_currentDate);
+
     return Container(
-      padding: const EdgeInsets.all(16),
+      padding: const EdgeInsets.all(18),
       decoration: BoxDecoration(
         color: Colors.white,
-        borderRadius: BorderRadius.circular(16),
-        border: Border.all(color: bgColor, width: 1.5),
-        boxShadow: [
-          BoxShadow(
-            color: color.withOpacity(0.05),
-            blurRadius: 10,
-            offset: const Offset(0, 4),
-          ),
-        ],
+        borderRadius: BorderRadius.circular(14),
+        border: Border.all(color: Colors.grey.shade200),
       ),
-      child: Row(
+      child: Column(
+        crossAxisAlignment: CrossAxisAlignment.start,
         children: [
-          Container(
-            padding: const EdgeInsets.all(10),
-            decoration: BoxDecoration(color: color, shape: BoxShape.circle),
-            child: Icon(icon, color: Colors.white, size: 24),
-          ),
-          const SizedBox(width: 12),
-          Column(
-            crossAxisAlignment: CrossAxisAlignment.start,
+          // Top row: label + icon
+          Row(
+            mainAxisAlignment: MainAxisAlignment.spaceBetween,
             children: [
               Text(
-                title,
-                style: TextStyle(
-                  fontSize: 12,
-                  color: Colors.grey.shade700,
-                  fontWeight: FontWeight.w600,
-                ),
-              ),
-              Text(
-                count,
+                'Attendance — $dateLabel',
                 style: const TextStyle(
-                  fontSize: 20,
-                  fontWeight: FontWeight.bold,
-                  color: Colors.black87,
+                  fontSize: 12,
+                  color: Colors.black54,
+                  letterSpacing: 0.2,
                 ),
               ),
-              const Text(
-                'Students',
-                style: TextStyle(fontSize: 10, color: Colors.grey),
+              Container(
+                width: 40,
+                height: 40,
+                decoration: BoxDecoration(
+                  color: _Brand.tealSurf,
+                  borderRadius: BorderRadius.circular(10),
+                ),
+                child: const Icon(
+                  Icons.analytics_outlined,
+                  color: _Brand.tealMid,
+                  size: 20,
+                ),
               ),
             ],
           ),
+          const SizedBox(height: 8),
+
+          // Big number
+          Text(
+            hasData ? '${percentage.toStringAsFixed(1)}%' : 'No records',
+            style: const TextStyle(
+              fontSize: 30,
+              fontWeight: FontWeight.w600,
+              color: Colors.black87,
+              height: 1.0,
+            ),
+          ),
+          const SizedBox(height: 4),
+          Text(
+            hasData
+                ? '$_presentCount present out of $total tracked'
+                : 'No attendance logs for this date.',
+            style: const TextStyle(fontSize: 12, color: Colors.black45),
+          ),
+
+          if (hasData) ...[
+            const SizedBox(height: 14),
+
+            // Progress bar
+            ClipRRect(
+              borderRadius: BorderRadius.circular(99),
+              child: LinearProgressIndicator(
+                value: _presentCount / total,
+                minHeight: 5,
+                backgroundColor: Colors.grey.shade100,
+                valueColor: const AlwaysStoppedAnimation<Color>(_Brand.teal),
+              ),
+            ),
+            const SizedBox(height: 12),
+
+            // Chips
+            Row(
+              children: [
+                _statusChip(
+                  '$_presentCount Present',
+                  _Brand.tealSurf,
+                  _Brand.tealMid,
+                  _Brand.tealLight,
+                ),
+                const SizedBox(width: 8),
+                _statusChip(
+                  '$_absentCount Absent',
+                  _Brand.redSurf,
+                  _Brand.redText,
+                  _Brand.redBorder,
+                ),
+              ],
+            ),
+          ],
         ],
       ),
     );
   }
 
-  Widget _buildGridItem({
-    required String title,
-    required IconData icon,
-    required Color color,
-    required VoidCallback onTap,
-  }) {
+  Widget _statusChip(String label, Color bg, Color text, Color border) {
+    return Container(
+      padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 4),
+      decoration: BoxDecoration(
+        color: bg,
+        borderRadius: BorderRadius.circular(99),
+        border: Border.all(color: border, width: 0.8),
+      ),
+      child: Text(
+        label,
+        style: TextStyle(
+          fontSize: 11,
+          color: text,
+          fontWeight: FontWeight.w500,
+        ),
+      ),
+    );
+  }
+
+  // ── Section Label ──────────────────────────────────────────────────────────
+
+  Widget _buildSectionLabel(String text) {
+    return Text(
+      text.toUpperCase(),
+      style: TextStyle(
+        fontSize: 11,
+        fontWeight: FontWeight.w600,
+        color: Colors.grey.shade500,
+        letterSpacing: 0.8,
+      ),
+    );
+  }
+
+  // ── Quick Access List ──────────────────────────────────────────────────────
+
+  Widget _buildQuickAccessList(BuildContext context) {
+    final items = _quickAccessItems;
+    return Column(
+      children: [
+        for (int i = 0; i < items.length; i += 2)
+          Padding(
+            padding: const EdgeInsets.fromLTRB(0, 0, 0, 10),
+            child: Row(
+              children: [
+                Expanded(child: _buildQAItem(context, items[i])),
+                const SizedBox(width: 10),
+                Expanded(
+                  child: i + 1 < items.length
+                      ? _buildQAItem(context, items[i + 1])
+                      : const SizedBox(),
+                ),
+              ],
+            ),
+          ),
+      ],
+    );
+  }
+
+  Widget _buildQAItem(BuildContext context, _QAItem item) {
     return InkWell(
-      onTap: onTap,
-      borderRadius: BorderRadius.circular(16),
+      onTap: () {
+        Navigator.push(
+          context,
+          MaterialPageRoute(builder: (_) => item.screen),
+        ).then((_) => _fetchStats());
+      },
+      borderRadius: BorderRadius.circular(14),
       child: Container(
+        // Tightened horizontal padding from 14 to 10 to yield room to text container
+        padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 14),
         decoration: BoxDecoration(
           color: Colors.white,
-          borderRadius: BorderRadius.circular(16),
+          borderRadius: BorderRadius.circular(14),
           border: Border.all(color: Colors.grey.shade200),
         ),
-        child: Column(
-          mainAxisAlignment: MainAxisAlignment.center,
+        child: Row(
           children: [
             Container(
-              padding: const EdgeInsets.all(12),
+              width: 38,
+              height: 38,
               decoration: BoxDecoration(
-                color: color.withOpacity(0.1),
-                shape: BoxShape.circle,
+                color: item.iconBg,
+                borderRadius: BorderRadius.circular(10),
               ),
-              child: Icon(icon, color: color, size: 28),
+              child: Icon(item.icon, color: item.iconColor, size: 18),
             ),
-            const SizedBox(height: 12),
-            Text(
-              title,
-              textAlign: TextAlign.center,
-              style: const TextStyle(
-                fontSize: 11,
-                fontWeight: FontWeight.w600,
-                color: Colors.black87,
+            // Tightened column gap spacing from 12 to 8
+            const SizedBox(width: 8),
+            Expanded(
+              child: Column(
+                crossAxisAlignment: CrossAxisAlignment.start,
+                children: [
+                  // Guard long words with a clean scaledown layout to prevent trailing breaks
+                  FittedBox(
+                    fit: BoxFit.scaleDown,
+                    alignment: Alignment.centerLeft,
+                    child: Text(
+                      item.title,
+                      style: const TextStyle(
+                        fontSize: 13,
+                        fontWeight: FontWeight.w600,
+                        color: Colors.black87,
+                      ),
+                    ),
+                  ),
+                  const SizedBox(height: 2),
+                  Text(
+                    item.subtitle,
+                    style: const TextStyle(fontSize: 11, color: Colors.black45),
+                    maxLines: 1,
+                    overflow: TextOverflow.ellipsis,
+                  ),
+                ],
               ),
-              maxLines: 2,
-              overflow: TextOverflow.ellipsis,
             ),
           ],
         ),
       ),
     );
   }
+}
+
+// ── Data model ────────────────────────────────────────────────────────────────
+
+class _QAItem {
+  final String title;
+  final String subtitle;
+  final IconData icon;
+  final Color iconBg;
+  final Color iconColor;
+  final Widget screen;
+
+  const _QAItem(
+    this.title,
+    this.subtitle,
+    this.icon,
+    this.iconBg,
+    this.iconColor,
+    this.screen,
+  );
 }

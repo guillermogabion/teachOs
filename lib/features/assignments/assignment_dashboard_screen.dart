@@ -2,6 +2,50 @@ import 'package:flutter/material.dart';
 import 'package:intl/intl.dart';
 import 'repository/assignment_repository.dart';
 
+// ─── Unified Brand Palette ───────────────────────────────────────────────────
+class _Brand {
+  static const tealDark = Color(0xFF085041);
+  static const tealMid = Color(0xFF0F6E56);
+  static const teal = Color(0xFF1D9E75);
+  static const tealSurf = Color(0xFFEAF8F3);
+  static const charcoal = Color(0xFF1F2937);
+  static const mutedText = Color(0xFF6B7280);
+  static const bgSurface = Color(0xFFF9FAFB);
+  static const amberWarning = Color(0xFFD97706);
+  static const amberSurf = Color(0xFFFEF3C7);
+  static const redText = Color(0xFFDC2626);
+  static const redSurf = Color(0xFFFEE2E2);
+  static const blueAccent = Color(0xFF2563EB);
+  static const blueSurf = Color(0xFFDBEAFE);
+}
+
+// ─── Standardized Input Decoration Helper ────────────────────────────────────
+InputDecoration _buildInputDecoration({
+  required String labelText,
+  Widget? suffix,
+}) {
+  return InputDecoration(
+    labelText: labelText,
+    labelStyle: const TextStyle(
+      fontSize: 13,
+      color: Colors.black54,
+      fontWeight: FontWeight.w500,
+    ),
+    suffix: suffix,
+    contentPadding: const EdgeInsets.symmetric(horizontal: 16, vertical: 14),
+    filled: true,
+    fillColor: Colors.white,
+    enabledBorder: OutlineInputBorder(
+      borderRadius: BorderRadius.circular(12),
+      borderSide: BorderSide(color: Colors.grey.shade200, width: 1.2),
+    ),
+    focusedBorder: OutlineInputBorder(
+      borderRadius: BorderRadius.circular(12),
+      borderSide: const BorderSide(color: _Brand.teal, width: 1.5),
+    ),
+  );
+}
+
 // ============================================================================
 // SCREEN 1: CLASS SELECTION HUB (CARDS VIEW)
 // ============================================================================
@@ -16,8 +60,6 @@ class _AssignmentHubScreenState extends State<AssignmentHubScreen> {
   final _repo = AssignmentRepository();
   List<Map<String, dynamic>> _classes = [];
   bool _isLoading = true;
-
-  // Controls whether we are viewing Active or Archived classes
   bool _viewingArchived = false;
 
   @override
@@ -29,7 +71,6 @@ class _AssignmentHubScreenState extends State<AssignmentHubScreen> {
   Future<void> _loadClasses() async {
     setState(() => _isLoading = true);
 
-    // Fetch based on current view mode
     final data = _viewingArchived
         ? await _repo.getArchivedClasses()
         : await _repo.getActiveClasses();
@@ -45,17 +86,19 @@ class _AssignmentHubScreenState extends State<AssignmentHubScreen> {
   @override
   Widget build(BuildContext context) {
     return Scaffold(
-      backgroundColor: Colors.grey.shade100,
+      backgroundColor: _Brand.bgSurface,
       appBar: AppBar(
         title: Text(
           _viewingArchived ? 'Archived Classes' : 'Assignment Management',
+          style: const TextStyle(
+            fontWeight: FontWeight.w700,
+            color: _Brand.charcoal,
+          ),
         ),
-        backgroundColor: _viewingArchived
-            ? Colors.blueGrey.shade700
-            : Colors.indigo.shade700,
-        foregroundColor: Colors.white,
+        backgroundColor: Colors.white,
+        elevation: 0,
+        surfaceTintColor: Colors.transparent,
         actions: [
-          // Toggle Button to switch views
           IconButton(
             tooltip: _viewingArchived
                 ? 'View Active Classes'
@@ -64,6 +107,7 @@ class _AssignmentHubScreenState extends State<AssignmentHubScreen> {
               _viewingArchived
                   ? Icons.unarchive_rounded
                   : Icons.archive_rounded,
+              color: _Brand.tealMid,
             ),
             onPressed: () {
               setState(() {
@@ -72,10 +116,11 @@ class _AssignmentHubScreenState extends State<AssignmentHubScreen> {
               _loadClasses();
             },
           ),
+          const SizedBox(width: 8),
         ],
       ),
       body: _isLoading
-          ? const Center(child: CircularProgressIndicator())
+          ? const Center(child: CircularProgressIndicator(color: _Brand.teal))
           : _classes.isEmpty
           ? Center(
               child: Column(
@@ -86,14 +131,18 @@ class _AssignmentHubScreenState extends State<AssignmentHubScreen> {
                         ? Icons.inventory_2_outlined
                         : Icons.class_outlined,
                     size: 64,
-                    color: Colors.grey.shade400,
+                    color: Colors.grey.shade300,
                   ),
                   const SizedBox(height: 16),
                   Text(
                     _viewingArchived
-                        ? 'No archived classes.'
+                        ? 'No archived classes found.'
                         : 'No active classes found.',
-                    style: TextStyle(color: Colors.grey.shade600, fontSize: 16),
+                    style: const TextStyle(
+                      color: _Brand.mutedText,
+                      fontSize: 15,
+                      fontWeight: FontWeight.w500,
+                    ),
                   ),
                 ],
               ),
@@ -103,15 +152,14 @@ class _AssignmentHubScreenState extends State<AssignmentHubScreen> {
                 final isTablet = constraints.maxWidth >= 600;
 
                 if (isTablet) {
-                  // Original grid for tablets
                   return GridView.builder(
-                    padding: const EdgeInsets.all(16),
+                    padding: const EdgeInsets.all(20),
                     gridDelegate:
                         const SliverGridDelegateWithFixedCrossAxisCount(
                           crossAxisCount: 2,
                           crossAxisSpacing: 16,
                           mainAxisSpacing: 16,
-                          childAspectRatio: 3.1,
+                          childAspectRatio: 3.2,
                         ),
                     itemCount: _classes.length,
                     itemBuilder: (context, index) =>
@@ -119,12 +167,11 @@ class _AssignmentHubScreenState extends State<AssignmentHubScreen> {
                   );
                 }
 
-                // Mobile: single column list
                 return ListView.builder(
-                  padding: const EdgeInsets.all(16),
+                  padding: const EdgeInsets.all(20),
                   itemCount: _classes.length,
                   itemBuilder: (context, index) => Padding(
-                    padding: const EdgeInsets.fromLTRB(0, 0, 0, 12),
+                    padding: const EdgeInsets.fromLTRB(0, 0, 0, 14),
                     child: _buildClassCard(_classes[index]),
                   ),
                 );
@@ -134,9 +181,19 @@ class _AssignmentHubScreenState extends State<AssignmentHubScreen> {
   }
 
   Widget _buildClassCard(Map<String, dynamic> section) {
-    return Card(
-      elevation: 3,
-      shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(16)),
+    return Container(
+      decoration: BoxDecoration(
+        color: Colors.white,
+        borderRadius: BorderRadius.circular(16),
+        border: Border.all(color: Colors.grey.shade100, width: 1.5),
+        boxShadow: [
+          BoxShadow(
+            color: Colors.black.withOpacity(0.02),
+            blurRadius: 10,
+            offset: const Offset(0, 4),
+          ),
+        ],
+      ),
       child: InkWell(
         borderRadius: BorderRadius.circular(16),
         onTap: () {
@@ -150,26 +207,27 @@ class _AssignmentHubScreenState extends State<AssignmentHubScreen> {
             ),
           );
         },
-        child: Container(
-          decoration: BoxDecoration(
-            borderRadius: BorderRadius.circular(16),
-            gradient: LinearGradient(
-              begin: Alignment.topLeft,
-              end: Alignment.bottomRight,
-              colors: _viewingArchived
-                  ? [Colors.blueGrey.shade400, Colors.blueGrey.shade600]
-                  : [Colors.indigo.shade500, Colors.indigo.shade800],
-            ),
-          ),
-          padding: const EdgeInsets.all(16),
+        child: Padding(
+          padding: const EdgeInsets.all(18),
           child: Stack(
             children: [
               Row(
                 children: [
-                  const Icon(
-                    Icons.class_rounded,
-                    color: Colors.white70,
-                    size: 36,
+                  Container(
+                    padding: const EdgeInsets.all(12),
+                    decoration: BoxDecoration(
+                      color: _viewingArchived
+                          ? Colors.grey.shade100
+                          : _Brand.tealSurf,
+                      borderRadius: BorderRadius.circular(12),
+                    ),
+                    child: Icon(
+                      Icons.class_rounded,
+                      color: _viewingArchived
+                          ? _Brand.mutedText
+                          : _Brand.tealMid,
+                      size: 28,
+                    ),
                   ),
                   const SizedBox(width: 16),
                   Expanded(
@@ -180,36 +238,43 @@ class _AssignmentHubScreenState extends State<AssignmentHubScreen> {
                         Text(
                           section['name'],
                           style: const TextStyle(
-                            color: Colors.white,
-                            fontSize: 18,
+                            color: _Brand.charcoal,
+                            fontSize: 16,
                             fontWeight: FontWeight.bold,
                           ),
-                          maxLines: 2,
+                          maxLines: 1,
                           overflow: TextOverflow.ellipsis,
                         ),
                         const SizedBox(height: 4),
                         Text(
                           _viewingArchived
-                              ? 'Read-Only'
+                              ? 'Read-Only Archive'
                               : 'Manage Tasks & Performance',
                           style: const TextStyle(
-                            color: Colors.white70,
+                            color: _Brand.mutedText,
                             fontSize: 12,
+                            fontWeight: FontWeight.w500,
                           ),
                         ),
                       ],
                     ),
                   ),
-                  const SizedBox(width: 32), // space for the 3-dot menu
+                  const SizedBox(width: 32),
                 ],
               ),
-
-              // 3-Dot Options Menu
               Positioned(
-                top: -8,
-                right: -8,
+                top: -6,
+                right: -6,
                 child: PopupMenuButton<String>(
-                  icon: const Icon(Icons.more_vert, color: Colors.white70),
+                  icon: const Icon(
+                    Icons.more_vert_rounded,
+                    color: Colors.black38,
+                    size: 20,
+                  ),
+                  color: Colors.white,
+                  shape: RoundedRectangleBorder(
+                    borderRadius: BorderRadius.circular(12),
+                  ),
                   onSelected: (action) async {
                     if (action == 'archive') {
                       await _repo.toggleArchiveStatus(section['id'], 1);
@@ -223,12 +288,24 @@ class _AssignmentHubScreenState extends State<AssignmentHubScreen> {
                     if (!_viewingArchived)
                       const PopupMenuItem(
                         value: 'archive',
-                        child: Text('Archive Class'),
+                        child: Text(
+                          'Archive Class',
+                          style: TextStyle(
+                            fontSize: 13,
+                            fontWeight: FontWeight.w500,
+                          ),
+                        ),
                       ),
                     if (_viewingArchived)
                       const PopupMenuItem(
                         value: 'restore',
-                        child: Text('Restore to Active'),
+                        child: Text(
+                          'Restore to Active',
+                          style: TextStyle(
+                            fontSize: 13,
+                            fontWeight: FontWeight.w500,
+                          ),
+                        ),
                       ),
                   ],
                 ),
@@ -260,12 +337,10 @@ class ClassAssignmentsScreen extends StatefulWidget {
 
 class _ClassAssignmentsScreenState extends State<ClassAssignmentsScreen> {
   final _repo = AssignmentRepository();
-
   List<Map<String, dynamic>> _assignments = [];
-  List<int> _quarters = [1]; // Defaults to Q1 if empty
+  List<int> _quarters = [1];
   int _selectedQuarter = 1;
   Map<String, dynamic>? _classSummary;
-
   bool _isLoading = true;
 
   @override
@@ -276,8 +351,6 @@ class _ClassAssignmentsScreenState extends State<ClassAssignmentsScreen> {
 
   Future<void> _loadDashboardData() async {
     setState(() => _isLoading = true);
-
-    // Fetch all dynamic data in parallel
     final quartersList = await _repo.getAvailableQuarters(widget.sectionId);
     final summary = await _repo.getClassPerformanceSummary(widget.sectionId);
     final assigns = await _repo.getAssignments(widget.sectionId);
@@ -285,7 +358,6 @@ class _ClassAssignmentsScreenState extends State<ClassAssignmentsScreen> {
     if (mounted) {
       setState(() {
         _quarters = quartersList.isEmpty ? [1] : quartersList;
-        // Ensure the selected quarter is valid, otherwise default to the latest
         if (!_quarters.contains(_selectedQuarter) && _quarters.isNotEmpty) {
           _selectedQuarter = _quarters.last;
         }
@@ -300,36 +372,53 @@ class _ClassAssignmentsScreenState extends State<ClassAssignmentsScreen> {
     final titleCtrl = TextEditingController();
     final scoreCtrl = TextEditingController(text: '100');
     String selectedType = 'Homework';
-    int selectedQuarter =
-        _selectedQuarter; // Default to the currently viewed quarter
+    int selectedQuarter = _selectedQuarter;
     DateTime selectedDate = DateTime.now().add(const Duration(days: 1));
 
     await showDialog(
       context: context,
       builder: (context) => StatefulBuilder(
         builder: (context, setModalState) => AlertDialog(
-          title: const Text('New Assignment'),
+          backgroundColor: Colors.white,
+          shape: RoundedRectangleBorder(
+            borderRadius: BorderRadius.circular(16),
+          ),
+          title: const Text(
+            'New Assignment Task',
+            style: TextStyle(
+              fontWeight: FontWeight.bold,
+              color: _Brand.charcoal,
+              fontSize: 18,
+            ),
+          ),
           content: SingleChildScrollView(
             child: Column(
               mainAxisSize: MainAxisSize.min,
               children: [
+                const SizedBox(height: 6),
                 TextField(
                   controller: titleCtrl,
-                  decoration: const InputDecoration(
-                    labelText: 'Title',
-                    border: OutlineInputBorder(),
+                  style: const TextStyle(
+                    fontSize: 14,
+                    fontWeight: FontWeight.w600,
                   ),
+                  decoration: _buildInputDecoration(labelText: 'Title'),
                 ),
-                const SizedBox(height: 12),
+                const SizedBox(height: 14),
                 Row(
                   children: [
                     Expanded(
                       flex: 2,
                       child: DropdownButtonFormField<String>(
                         value: selectedType,
-                        decoration: const InputDecoration(
+                        dropdownColor: Colors.white,
+                        style: const TextStyle(
+                          fontSize: 14,
+                          fontWeight: FontWeight.w600,
+                          color: _Brand.charcoal,
+                        ),
+                        decoration: _buildInputDecoration(
                           labelText: 'Category',
-                          border: OutlineInputBorder(),
                         ),
                         items: ['Homework', 'Project', 'Activity']
                             .map(
@@ -340,16 +429,18 @@ class _ClassAssignmentsScreenState extends State<ClassAssignmentsScreen> {
                             setModalState(() => selectedType = v!),
                       ),
                     ),
-                    const SizedBox(width: 8),
+                    const SizedBox(width: 10),
                     Expanded(
                       flex: 1,
                       child: DropdownButtonFormField<int>(
                         value: selectedQuarter,
-                        decoration: const InputDecoration(
-                          labelText: 'Quarter',
-                          border: OutlineInputBorder(),
+                        dropdownColor: Colors.white,
+                        style: const TextStyle(
+                          fontSize: 14,
+                          fontWeight: FontWeight.w600,
+                          color: _Brand.charcoal,
                         ),
-                        // Allow them to pick existing quarters or create a new one (up to Q8 for flexibility)
+                        decoration: _buildInputDecoration(labelText: 'Quarter'),
                         items: List.generate(8, (i) => i + 1)
                             .map(
                               (q) => DropdownMenuItem(
@@ -364,23 +455,49 @@ class _ClassAssignmentsScreenState extends State<ClassAssignmentsScreen> {
                     ),
                   ],
                 ),
-                const SizedBox(height: 12),
+                const SizedBox(height: 14),
                 TextField(
                   controller: scoreCtrl,
                   keyboardType: TextInputType.number,
-                  decoration: const InputDecoration(
-                    labelText: 'Max Score',
-                    border: OutlineInputBorder(),
+                  style: const TextStyle(
+                    fontSize: 14,
+                    fontWeight: FontWeight.w600,
+                  ),
+                  decoration: _buildInputDecoration(
+                    labelText: 'Max Score Points',
                   ),
                 ),
-                const SizedBox(height: 12),
+                const SizedBox(height: 10),
                 ListTile(
                   contentPadding: EdgeInsets.zero,
-                  title: const Text('Due Date'),
-                  subtitle: Text(
-                    DateFormat('MMM d, yyyy').format(selectedDate),
+                  title: const Text(
+                    'Target Due Date',
+                    style: TextStyle(
+                      fontSize: 13,
+                      fontWeight: FontWeight.w600,
+                      color: Colors.black54,
+                    ),
                   ),
-                  trailing: const Icon(Icons.calendar_today),
+                  subtitle: Text(
+                    DateFormat('MMMM d, yyyy').format(selectedDate),
+                    style: const TextStyle(
+                      fontSize: 14,
+                      fontWeight: FontWeight.bold,
+                      color: _Brand.tealDark,
+                    ),
+                  ),
+                  trailing: Container(
+                    padding: const EdgeInsets.all(8),
+                    decoration: BoxDecoration(
+                      color: _Brand.bgSurface,
+                      borderRadius: BorderRadius.circular(8),
+                    ),
+                    child: const Icon(
+                      Icons.calendar_today_rounded,
+                      size: 18,
+                      color: _Brand.tealMid,
+                    ),
+                  ),
                   onTap: () async {
                     final date = await showDatePicker(
                       context: context,
@@ -397,10 +514,21 @@ class _ClassAssignmentsScreenState extends State<ClassAssignmentsScreen> {
           actions: [
             TextButton(
               onPressed: () => Navigator.pop(context),
-              child: const Text('Cancel'),
+              child: const Text(
+                'Cancel',
+                style: TextStyle(
+                  color: _Brand.mutedText,
+                  fontWeight: FontWeight.w600,
+                ),
+              ),
             ),
-            ElevatedButton(
-              style: ElevatedButton.styleFrom(backgroundColor: Colors.indigo),
+            FilledButton(
+              style: FilledButton.styleFrom(
+                backgroundColor: _Brand.tealDark,
+                shape: RoundedRectangleBorder(
+                  borderRadius: BorderRadius.circular(10),
+                ),
+              ),
               onPressed: () async {
                 if (titleCtrl.text.isEmpty || scoreCtrl.text.isEmpty) return;
 
@@ -415,15 +543,74 @@ class _ClassAssignmentsScreenState extends State<ClassAssignmentsScreen> {
 
                 if (mounted) {
                   Navigator.pop(context);
-                  _loadDashboardData(); // Refresh everything
+                  _loadDashboardData();
                 }
               },
-              child: const Text('Create'),
+              child: const Text(
+                'Create Task',
+                style: TextStyle(fontWeight: FontWeight.bold),
+              ),
             ),
           ],
         ),
       ),
     );
+  }
+
+  Future<void> _confirmDeleteTask(String assignmentId, String title) async {
+    final confirm = await showDialog<bool>(
+      context: context,
+      builder: (context) => AlertDialog(
+        backgroundColor: Colors.white,
+        shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(16)),
+        title: const Text(
+          'Delete Assignment?',
+          style: TextStyle(fontWeight: FontWeight.bold),
+        ),
+        content: Text(
+          'Are you sure you want to delete "$title"? This will also permanently erase all student submissions and score tracking associated with it.',
+          style: const TextStyle(color: Colors.black87),
+        ),
+        actions: [
+          TextButton(
+            onPressed: () => Navigator.pop(context, false),
+            child: const Text(
+              'Cancel',
+              style: TextStyle(
+                color: _Brand.mutedText,
+                fontWeight: FontWeight.bold,
+              ),
+            ),
+          ),
+          FilledButton(
+            style: FilledButton.styleFrom(
+              backgroundColor: _Brand.redText,
+              shape: RoundedRectangleBorder(
+                borderRadius: BorderRadius.circular(10),
+              ),
+            ),
+            onPressed: () => Navigator.pop(context, true),
+            child: const Text(
+              'Delete Permanently',
+              style: TextStyle(fontWeight: FontWeight.bold),
+            ),
+          ),
+        ],
+      ),
+    );
+
+    if (confirm == true) {
+      await _repo.deleteAssignment(assignmentId);
+      _loadDashboardData();
+      if (mounted) {
+        ScaffoldMessenger.of(context).showSnackBar(
+          const SnackBar(
+            content: Text('Assignment and all linked submissions deleted.'),
+            backgroundColor: _Brand.charcoal,
+          ),
+        );
+      }
+    }
   }
 
   void _openTrackingModal(String assignmentId, String title, int maxScore) {
@@ -440,9 +627,7 @@ class _ClassAssignmentsScreenState extends State<ClassAssignmentsScreen> {
         maxScore: maxScore,
         repo: _repo,
       ),
-    ).then(
-      (_) => _loadDashboardData(),
-    ); // Reload averages when bottom sheet closes
+    ).then((_) => _loadDashboardData());
   }
 
   void _openStudentAveragesModal() {
@@ -461,20 +646,20 @@ class _ClassAssignmentsScreenState extends State<ClassAssignmentsScreen> {
     );
   }
 
-  Color _getTypeColor(String type) {
-    if (type == 'Homework') return Colors.blue;
-    if (type == 'Project') return Colors.purple;
-    return Colors.orange;
+  Map<String, Color> _getTypeColors(String type) {
+    if (type == 'Homework')
+      return {'bg': _Brand.blueSurf, 'text': _Brand.blueAccent};
+    if (type == 'Project')
+      return {'bg': const Color(0xFFF3E8FF), 'text': const Color(0xFF7C3AED)};
+    return {'bg': _Brand.amberSurf, 'text': _Brand.amberWarning};
   }
 
   @override
   Widget build(BuildContext context) {
-    // Filter assignments for the currently selected quarter tab
     final filteredAssignments = _assignments
         .where((a) => a['quarter_number'] == _selectedQuarter)
         .toList();
 
-    // Extract quarter average safely
     double currentQuarterAvg = 0.0;
     if (_classSummary != null) {
       final qStats = (_classSummary!['quarters'] as List).firstWhere(
@@ -487,40 +672,60 @@ class _ClassAssignmentsScreenState extends State<ClassAssignmentsScreen> {
     final overallCumulative = _classSummary?['overall_cumulative'] ?? 0.0;
 
     return Scaffold(
-      backgroundColor: Colors.grey.shade50,
+      backgroundColor: _Brand.bgSurface,
       appBar: AppBar(
-        title: Text(widget.sectionName),
-        backgroundColor: Colors.indigo.shade700,
-        foregroundColor: Colors.white,
+        title: Text(
+          widget.sectionName,
+          style: const TextStyle(
+            fontWeight: FontWeight.w700,
+            color: _Brand.charcoal,
+          ),
+        ),
+        backgroundColor: Colors.white,
+        elevation: 0,
+        surfaceTintColor: Colors.transparent,
       ),
       body: _isLoading
-          ? const Center(child: CircularProgressIndicator())
+          ? const Center(child: CircularProgressIndicator(color: _Brand.teal))
           : Column(
               crossAxisAlignment: CrossAxisAlignment.start,
               children: [
-                // 1. CLASS SUMMARY HEADER
+                // Executive Executive Dashboard Banner
                 Container(
-                  padding: const EdgeInsets.all(16),
-                  color: Colors.indigo.shade700,
+                  margin: const EdgeInsets.symmetric(
+                    horizontal: 20,
+                    vertical: 12,
+                  ),
+                  padding: const EdgeInsets.symmetric(
+                    vertical: 18,
+                    horizontal: 16,
+                  ),
+                  decoration: BoxDecoration(
+                    color: _Brand.tealDark,
+                    borderRadius: BorderRadius.circular(16),
+                  ),
                   child: Row(
                     mainAxisAlignment: MainAxisAlignment.spaceAround,
                     children: [
                       _buildMetricStat(
-                        'Q$_selectedQuarter Avg',
+                        'Quarter $_selectedQuarter Average',
                         '$currentQuarterAvg%',
                       ),
-                      Container(width: 1, height: 40, color: Colors.white30),
-                      _buildMetricStat('Cumulative Avg', '$overallCumulative%'),
+                      Container(width: 1, height: 36, color: Colors.white24),
+                      _buildMetricStat(
+                        'Cumulative Class Average',
+                        '$overallCumulative%',
+                      ),
                     ],
                   ),
                 ),
 
-                // 2. DYNAMIC QUARTER TABS
+                // Context Filter and Configuration Setup Row
                 Container(
-                  color: Colors.white,
+                  color: Colors.transparent,
                   padding: const EdgeInsets.symmetric(
-                    vertical: 8,
-                    horizontal: 16,
+                    vertical: 6,
+                    horizontal: 20,
                   ),
                   child: Row(
                     children: [
@@ -528,104 +733,172 @@ class _ClassAssignmentsScreenState extends State<ClassAssignmentsScreen> {
                         child: SingleChildScrollView(
                           scrollDirection: Axis.horizontal,
                           child: Row(
-                            children: _quarters
-                                .map(
-                                  (q) => Padding(
-                                    padding: const EdgeInsets.only(right: 8.0),
-                                    child: ChoiceChip(
-                                      label: Text('Quarter $q'),
-                                      selected: _selectedQuarter == q,
-                                      selectedColor: Colors.indigo.shade100,
-                                      labelStyle: TextStyle(
-                                        color: _selectedQuarter == q
-                                            ? Colors.indigo.shade900
-                                            : Colors.black87,
-                                        fontWeight: _selectedQuarter == q
-                                            ? FontWeight.bold
-                                            : FontWeight.normal,
-                                      ),
-                                      onSelected: (selected) {
-                                        if (selected)
-                                          setState(() => _selectedQuarter = q);
-                                      },
-                                    ),
+                            children: _quarters.map((q) {
+                              final isSelected = _selectedQuarter == q;
+                              return Padding(
+                                padding: const EdgeInsets.only(right: 8.0),
+                                child: ChoiceChip(
+                                  label: Text('Quarter $q'),
+                                  selected: isSelected,
+                                  selectedColor: _Brand.tealSurf,
+                                  backgroundColor: Colors.white,
+                                  side: BorderSide(
+                                    color: isSelected
+                                        ? _Brand.teal.withOpacity(0.4)
+                                        : Colors.grey.shade200,
                                   ),
-                                )
-                                .toList(),
+                                  labelStyle: TextStyle(
+                                    color: isSelected
+                                        ? _Brand.tealDark
+                                        : _Brand.charcoal,
+                                    fontWeight: isSelected
+                                        ? FontWeight.bold
+                                        : FontWeight.w500,
+                                    fontSize: 13,
+                                  ),
+                                  onSelected: (selected) {
+                                    if (selected)
+                                      setState(() => _selectedQuarter = q);
+                                  },
+                                ),
+                              );
+                            }).toList(),
                           ),
                         ),
                       ),
-                      // Button to view individual student averages for this quarter
+                      const SizedBox(width: 8),
                       IconButton(
-                        tooltip: 'View Student Averages',
+                        tooltip: 'View Student Averages Matrix',
+                        style: IconButton.styleFrom(
+                          backgroundColor: Colors.white,
+                          side: BorderSide(color: Colors.grey.shade200),
+                          shape: RoundedRectangleBorder(
+                            borderRadius: BorderRadius.circular(10),
+                          ),
+                        ),
                         icon: const Icon(
                           Icons.bar_chart_rounded,
-                          color: Colors.indigo,
+                          color: _Brand.tealMid,
+                          size: 20,
                         ),
                         onPressed: _openStudentAveragesModal,
                       ),
                     ],
                   ),
                 ),
-                const Divider(height: 1, thickness: 1),
+                const SizedBox(height: 10),
 
-                // 3. ASSIGNMENTS LIST FOR SELECTED QUARTER
+                // Core Tasks Engine Pipeline
                 Expanded(
                   child: filteredAssignments.isEmpty
                       ? Center(
                           child: Text(
-                            'No tasks in Quarter $_selectedQuarter yet.',
+                            'No active performance tasks assigned to Quarter $_selectedQuarter.',
+                            style: const TextStyle(
+                              fontSize: 14,
+                              color: _Brand.mutedText,
+                              fontWeight: FontWeight.w500,
+                            ),
                           ),
                         )
                       : ListView.builder(
-                          padding: const EdgeInsets.all(16),
+                          padding: const EdgeInsets.symmetric(horizontal: 20),
                           itemCount: filteredAssignments.length,
                           itemBuilder: (context, index) {
                             final a = filteredAssignments[index];
-                            return Card(
+                            final colors = _getTypeColors(a['type']);
+                            return Container(
                               margin: const EdgeInsets.fromLTRB(0, 0, 0, 12),
-                              shape: RoundedRectangleBorder(
-                                borderRadius: BorderRadius.circular(12),
+                              decoration: BoxDecoration(
+                                color: Colors.white,
+                                borderRadius: BorderRadius.circular(14),
+                                border: Border.all(
+                                  color: Colors.grey.shade100,
+                                  width: 1.2,
+                                ),
                               ),
                               child: ListTile(
-                                contentPadding: const EdgeInsets.all(16),
-                                leading: CircleAvatar(
-                                  backgroundColor: _getTypeColor(
-                                    a['type'],
-                                  ).withOpacity(0.2),
+                                contentPadding: const EdgeInsets.symmetric(
+                                  horizontal: 16,
+                                  vertical: 10,
+                                ),
+                                leading: Container(
+                                  padding: const EdgeInsets.all(10),
+                                  decoration: BoxDecoration(
+                                    color: colors['bg'],
+                                    borderRadius: BorderRadius.circular(10),
+                                  ),
                                   child: Icon(
-                                    Icons.assignment,
-                                    color: _getTypeColor(a['type']),
+                                    Icons.assignment_outlined,
+                                    color: colors['text'],
+                                    size: 22,
                                   ),
                                 ),
                                 title: Text(
                                   a['title'],
                                   style: const TextStyle(
                                     fontWeight: FontWeight.bold,
+                                    color: _Brand.charcoal,
+                                    fontSize: 15,
                                   ),
                                 ),
-                                subtitle: Column(
-                                  crossAxisAlignment: CrossAxisAlignment.start,
-                                  children: [
-                                    const SizedBox(height: 4),
-                                    Text(
-                                      '${a['type']} • Due: ${a['due_date']}',
+                                subtitle: Padding(
+                                  padding: const EdgeInsets.only(top: 4.0),
+                                  child: Text(
+                                    '${a['type']}  •  Due: ${a['due_date']}\nMax Target: ${a['max_score']} pts',
+                                    style: const TextStyle(
+                                      color: _Brand.mutedText,
+                                      fontSize: 12,
+                                      height: 1.4,
+                                      fontWeight: FontWeight.w500,
                                     ),
-                                    Text(
-                                      'Max Score: ${a['max_score']} pts',
-                                      style: TextStyle(
-                                        color: Colors.grey.shade600,
+                                  ),
+                                ),
+                                trailing: Row(
+                                  mainAxisSize: MainAxisSize.min,
+                                  children: [
+                                    OutlinedButton(
+                                      style: OutlinedButton.styleFrom(
+                                        side: const BorderSide(
+                                          color: _Brand.teal,
+                                        ),
+                                        foregroundColor: _Brand.tealDark,
+                                        shape: RoundedRectangleBorder(
+                                          borderRadius: BorderRadius.circular(
+                                            8,
+                                          ),
+                                        ),
+                                        padding: const EdgeInsets.symmetric(
+                                          horizontal: 14,
+                                        ),
+                                      ),
+                                      onPressed: () => _openTrackingModal(
+                                        a['id'],
+                                        a['title'],
+                                        a['max_score'],
+                                      ),
+                                      child: const Text(
+                                        'Track',
+                                        style: TextStyle(
+                                          fontWeight: FontWeight.bold,
+                                          fontSize: 12,
+                                        ),
+                                      ),
+                                    ),
+                                    const SizedBox(width: 4),
+                                    IconButton(
+                                      icon: const Icon(
+                                        Icons.delete_outline_rounded,
+                                        color: _Brand.redText,
+                                        size: 20,
+                                      ),
+                                      tooltip: 'Delete Assignment',
+                                      onPressed: () => _confirmDeleteTask(
+                                        a['id'],
+                                        a['title'],
                                       ),
                                     ),
                                   ],
-                                ),
-                                trailing: FilledButton.tonal(
-                                  onPressed: () => _openTrackingModal(
-                                    a['id'],
-                                    a['title'],
-                                    a['max_score'],
-                                  ),
-                                  child: const Text('Track'),
                                 ),
                               ),
                             );
@@ -636,35 +909,48 @@ class _ClassAssignmentsScreenState extends State<ClassAssignmentsScreen> {
             ),
       floatingActionButton: FloatingActionButton.extended(
         onPressed: _showCreateModal,
-        backgroundColor: Colors.indigo.shade700,
+        backgroundColor: _Brand.tealDark,
         foregroundColor: Colors.white,
-        icon: const Icon(Icons.add),
-        label: const Text('New Task'),
+        elevation: 2,
+        icon: const Icon(Icons.add_rounded),
+        label: const Text(
+          'New Task Plan',
+          style: TextStyle(fontWeight: FontWeight.bold, fontSize: 13),
+        ),
       ),
     );
   }
 
   Widget _buildMetricStat(String label, String value) {
     return Column(
+      mainAxisSize: MainAxisSize.min,
       children: [
         Text(
           value,
           style: const TextStyle(
-            fontSize: 24,
-            fontWeight: FontWeight.bold,
+            fontSize: 22,
+            fontWeight: FontWeight.w800,
             color: Colors.white,
+            letterSpacing: -0.5,
           ),
         ),
         const SizedBox(height: 4),
         Text(
           label,
-          style: const TextStyle(fontSize: 12, color: Colors.white70),
+          style: const TextStyle(
+            fontSize: 11,
+            color: Colors.white70,
+            fontWeight: FontWeight.w500,
+          ),
         ),
       ],
     );
   }
 }
 
+// ============================================================================
+// MODAL MATRIX SHEET: STUDENT AVERAGES
+// ============================================================================
 class StudentAveragesSheet extends StatefulWidget {
   final String sectionId;
   final int quarterNumber;
@@ -684,8 +970,6 @@ class StudentAveragesSheet extends StatefulWidget {
 class _StudentAveragesSheetState extends State<StudentAveragesSheet> {
   List<Map<String, dynamic>> _studentStats = [];
   bool _isLoading = true;
-
-  // Sorting States
   int _sortColumnIndex = 0;
   bool _isSortAscending = true;
 
@@ -703,16 +987,12 @@ class _StudentAveragesSheetState extends State<StudentAveragesSheet> {
     if (mounted) {
       setState(() {
         _studentStats = List<Map<String, dynamic>>.from(data);
-        _sortData(
-          _sortColumnIndex,
-          _isSortAscending,
-        ); // Apply default sort (Name ASC)
+        _sortData(_sortColumnIndex, _isSortAscending);
         _isLoading = false;
       });
     }
   }
 
-  // Local sorting logic for instant UI feedback without hitting the database
   void _sortData(int columnIndex, bool ascending) {
     setState(() {
       _sortColumnIndex = columnIndex;
@@ -720,17 +1000,14 @@ class _StudentAveragesSheetState extends State<StudentAveragesSheet> {
 
       _studentStats.sort((a, b) {
         if (columnIndex == 0) {
-          // Sort by Name
           return ascending
               ? a['full_name'].compareTo(b['full_name'])
               : b['full_name'].compareTo(a['full_name']);
         } else if (columnIndex == 1) {
-          // Sort by Quarter Average
           return ascending
               ? a['quarter_average'].compareTo(b['quarter_average'])
               : b['quarter_average'].compareTo(a['quarter_average']);
         } else if (columnIndex == 2) {
-          // Sort by Overall Average
           return ascending
               ? a['overall_average'].compareTo(b['overall_average'])
               : b['overall_average'].compareTo(a['overall_average']);
@@ -741,9 +1018,9 @@ class _StudentAveragesSheetState extends State<StudentAveragesSheet> {
   }
 
   Color _getGradeColor(double grade) {
-    if (grade >= 90) return Colors.green.shade700;
-    if (grade >= 75) return Colors.amber.shade700;
-    return Colors.red.shade700;
+    if (grade >= 90) return _Brand.tealDark;
+    if (grade >= 75) return _Brand.amberWarning;
+    return _Brand.redText;
   }
 
   @override
@@ -754,111 +1031,129 @@ class _StudentAveragesSheetState extends State<StudentAveragesSheet> {
       child: Column(
         children: [
           Padding(
-            padding: const EdgeInsets.symmetric(horizontal: 16.0),
+            padding: const EdgeInsets.symmetric(horizontal: 20, vertical: 4),
             child: Row(
               mainAxisAlignment: MainAxisAlignment.spaceBetween,
               children: [
                 Text(
-                  'Quarter ${widget.quarterNumber} Performance',
+                  'Quarter ${widget.quarterNumber} Performance Ledger',
                   style: const TextStyle(
-                    fontSize: 18,
+                    fontSize: 16,
                     fontWeight: FontWeight.bold,
+                    color: _Brand.charcoal,
                   ),
                 ),
                 IconButton(
-                  icon: const Icon(Icons.close),
+                  icon: const Icon(
+                    Icons.close_rounded,
+                    color: _Brand.mutedText,
+                  ),
                   onPressed: () => Navigator.pop(context),
                 ),
               ],
             ),
           ),
-          const Divider(height: 1),
+          const Divider(color: Color(0xFFF3F4F6), thickness: 1.5),
           Expanded(
             child: _isLoading
-                ? const Center(child: CircularProgressIndicator())
+                ? const Center(
+                    child: CircularProgressIndicator(color: _Brand.teal),
+                  )
                 : _studentStats.isEmpty
-                ? const Center(child: Text('No student data available.'))
+                ? const Center(
+                    child: Text(
+                      'No analytical data map populated.',
+                      style: TextStyle(color: _Brand.mutedText),
+                    ),
+                  )
                 : SingleChildScrollView(
                     scrollDirection: Axis.vertical,
                     child: SingleChildScrollView(
                       scrollDirection: Axis.horizontal,
-                      child: DataTable(
-                        sortColumnIndex: _sortColumnIndex,
-                        sortAscending: _isSortAscending,
-                        headingTextStyle: const TextStyle(
-                          fontWeight: FontWeight.bold,
-                          color: Colors.black87,
-                        ),
-                        columns: [
-                          DataColumn(
-                            label: const Text('Student Name'),
-                            onSort: (index, ascending) =>
-                                _sortData(index, ascending),
+                      child: Theme(
+                        data: Theme.of(
+                          context,
+                        ).copyWith(dividerColor: Colors.grey.shade100),
+                        child: DataTable(
+                          sortColumnIndex: _sortColumnIndex,
+                          sortAscending: _isSortAscending,
+                          headingTextStyle: const TextStyle(
+                            fontWeight: FontWeight.bold,
+                            color: _Brand.tealDark,
+                            fontSize: 13,
                           ),
-                          DataColumn(
-                            label: Text('Q${widget.quarterNumber} Average'),
-                            numeric: true,
-                            onSort: (index, ascending) =>
-                                _sortData(index, ascending),
-                          ),
-                          DataColumn(
-                            label: const Text('Overall Average'),
-                            numeric: true,
-                            tooltip: 'Cumulative average across all quarters',
-                            onSort: (index, ascending) =>
-                                _sortData(index, ascending),
-                          ),
-                        ],
-                        rows: _studentStats.map((stat) {
-                          final qAvg = (stat['quarter_average'] as num)
-                              .toDouble();
-                          final oAvg = (stat['overall_average'] as num)
-                              .toDouble();
+                          columns: [
+                            DataColumn(
+                              label: const Text('Student Full Name'),
+                              onSort: (index, asc) => _sortData(index, asc),
+                            ),
+                            DataColumn(
+                              label: Text('Q${widget.quarterNumber} Avg'),
+                              numeric: true,
+                              onSort: (index, asc) => _sortData(index, asc),
+                            ),
+                            DataColumn(
+                              label: const Text('Cumulative Overall'),
+                              numeric: true,
+                              onSort: (index, asc) => _sortData(index, asc),
+                            ),
+                          ],
+                          rows: _studentStats.map((stat) {
+                            final qAvg = (stat['quarter_average'] as num)
+                                .toDouble();
+                            final oAvg = (stat['overall_average'] as num)
+                                .toDouble();
 
-                          return DataRow(
-                            cells: [
-                              DataCell(
-                                Text(
-                                  stat['full_name'],
-                                  style: const TextStyle(
-                                    fontWeight: FontWeight.w600,
+                            return DataRow(
+                              cells: [
+                                DataCell(
+                                  Text(
+                                    stat['full_name'],
+                                    style: const TextStyle(
+                                      fontWeight: FontWeight.w600,
+                                      color: _Brand.charcoal,
+                                      fontSize: 13,
+                                    ),
                                   ),
                                 ),
-                              ),
-                              DataCell(
-                                Column(
-                                  mainAxisAlignment: MainAxisAlignment.center,
-                                  crossAxisAlignment: CrossAxisAlignment.end,
-                                  children: [
-                                    Text(
-                                      '$qAvg%',
-                                      style: TextStyle(
-                                        fontWeight: FontWeight.bold,
-                                        color: _getGradeColor(qAvg),
+                                DataCell(
+                                  Column(
+                                    mainAxisAlignment: MainAxisAlignment.center,
+                                    crossAxisAlignment: CrossAxisAlignment.end,
+                                    children: [
+                                      Text(
+                                        '$qAvg%',
+                                        style: TextStyle(
+                                          fontWeight: FontWeight.bold,
+                                          color: _getGradeColor(qAvg),
+                                          fontSize: 13,
+                                        ),
                                       ),
-                                    ),
-                                    Text(
-                                      '${stat['quarter_earned']} / ${stat['quarter_possible']} pts',
-                                      style: const TextStyle(
-                                        fontSize: 10,
-                                        color: Colors.grey,
+                                      Text(
+                                        '${stat['quarter_earned']}/${stat['quarter_possible']} pts',
+                                        style: const TextStyle(
+                                          fontSize: 10,
+                                          color: _Brand.mutedText,
+                                          fontWeight: FontWeight.w500,
+                                        ),
                                       ),
-                                    ),
-                                  ],
-                                ),
-                              ),
-                              DataCell(
-                                Text(
-                                  '$oAvg%',
-                                  style: TextStyle(
-                                    fontWeight: FontWeight.bold,
-                                    color: _getGradeColor(oAvg),
+                                    ],
                                   ),
                                 ),
-                              ),
-                            ],
-                          );
-                        }).toList(),
+                                DataCell(
+                                  Text(
+                                    '$oAvg%',
+                                    style: TextStyle(
+                                      fontWeight: FontWeight.bold,
+                                      color: _getGradeColor(oAvg),
+                                      fontSize: 13,
+                                    ),
+                                  ),
+                                ),
+                              ],
+                            );
+                          }).toList(),
+                        ),
                       ),
                     ),
                   ),
@@ -870,7 +1165,7 @@ class _StudentAveragesSheetState extends State<StudentAveragesSheet> {
 }
 
 // ============================================================================
-// BOTTOM SHEET: THE STATUS TRACKER (Submitted, Late, Missing)
+// BOTTOM SHEET: STATUS TRACKER FLOW MATRIX
 // ============================================================================
 class TrackingBottomSheet extends StatefulWidget {
   final String assignmentId;
@@ -910,16 +1205,16 @@ class _TrackingBottomSheetState extends State<TrackingBottomSheet> {
     }
   }
 
-  Color _getStatusColor(String status) {
+  Map<String, Color> _getStatusTokens(String status) {
     switch (status) {
       case 'Submitted':
-        return Colors.green;
+        return {'bg': _Brand.tealSurf, 'text': _Brand.tealDark};
       case 'Late':
-        return Colors.orange;
+        return {'bg': _Brand.amberSurf, 'text': _Brand.amberWarning};
       case 'Missing':
-        return Colors.red;
+        return {'bg': _Brand.redSurf, 'text': _Brand.redText};
       default:
-        return Colors.grey; // Pending
+        return {'bg': _Brand.bgSurface, 'text': _Brand.mutedText};
     }
   }
 
@@ -930,9 +1225,8 @@ class _TrackingBottomSheetState extends State<TrackingBottomSheet> {
       padding: const EdgeInsets.only(top: 16),
       child: Column(
         children: [
-          // HEADER
           Padding(
-            padding: const EdgeInsets.symmetric(horizontal: 16.0),
+            padding: const EdgeInsets.symmetric(horizontal: 20),
             child: Row(
               mainAxisAlignment: MainAxisAlignment.spaceBetween,
               children: [
@@ -940,8 +1234,9 @@ class _TrackingBottomSheetState extends State<TrackingBottomSheet> {
                   child: Text(
                     'Tracking: ${widget.title}',
                     style: const TextStyle(
-                      fontSize: 18,
+                      fontSize: 16,
                       fontWeight: FontWeight.bold,
+                      color: _Brand.charcoal,
                     ),
                     maxLines: 1,
                     overflow: TextOverflow.ellipsis,
@@ -953,64 +1248,69 @@ class _TrackingBottomSheetState extends State<TrackingBottomSheet> {
                     vertical: 6,
                   ),
                   decoration: BoxDecoration(
-                    color: Colors.indigo.shade50,
+                    color: _Brand.tealSurf,
                     borderRadius: BorderRadius.circular(20),
                   ),
                   child: Text(
-                    'Max: ${widget.maxScore} pts',
-                    style: TextStyle(
+                    'Max target: ${widget.maxScore} pts',
+                    style: const TextStyle(
                       fontWeight: FontWeight.bold,
-                      color: Colors.indigo.shade700,
+                      color: _Brand.tealDark,
+                      fontSize: 12,
                     ),
                   ),
                 ),
               ],
             ),
           ),
-          const SizedBox(height: 16),
-          const Divider(height: 1),
+          const SizedBox(height: 14),
+          const Divider(color: Color(0xFFF3F4F6), thickness: 1.5),
 
-          // LIST VIEW
           Expanded(
             child: _isLoading
-                ? const Center(child: CircularProgressIndicator())
+                ? const Center(
+                    child: CircularProgressIndicator(color: _Brand.teal),
+                  )
                 : _submissions.isEmpty
-                // THE FIX: Explicit warning if the class was empty when the task was created
                 ? Padding(
-                    padding: const EdgeInsets.all(32.0),
+                    padding: const EdgeInsets.all(32),
                     child: Column(
                       mainAxisAlignment: MainAxisAlignment.center,
                       children: [
                         Icon(
                           Icons.group_off_rounded,
-                          size: 64,
-                          color: Colors.grey.shade400,
+                          size: 54,
+                          color: Colors.grey.shade300,
                         ),
                         const SizedBox(height: 16),
-                        Text(
+                        const Text(
                           'No students to track!',
                           style: TextStyle(
-                            fontSize: 18,
+                            fontSize: 16,
                             fontWeight: FontWeight.bold,
-                            color: Colors.grey.shade700,
+                            color: _Brand.charcoal,
                           ),
                         ),
-                        const SizedBox(height: 8),
-                        Text(
-                          'There were no students enrolled in this class when you created this assignment. Please enroll students first, then create a new task.',
+                        const SizedBox(height: 6),
+                        const Text(
+                          'There were no students enrolled in this class context when the core assignment matrix was dispatched.',
                           textAlign: TextAlign.center,
-                          style: TextStyle(color: Colors.grey.shade600),
+                          style: TextStyle(
+                            color: _Brand.mutedText,
+                            fontSize: 13,
+                            height: 1.4,
+                          ),
                         ),
                       ],
                     ),
                   )
                 : ListView.separated(
                     itemCount: _submissions.length,
-                    separatorBuilder: (_, __) => const Divider(height: 1),
+                    separatorBuilder: (_, __) =>
+                        const Divider(color: Color(0xFFF9FAFB), thickness: 1),
                     itemBuilder: (context, index) {
                       final sub = _submissions[index];
-
-                      // Track local text controller for the score input
+                      final tokens = _getStatusTokens(sub['status']);
                       final scoreCtrl = TextEditingController(
                         text: sub['score'] != null
                             ? sub['score'].toString()
@@ -1019,12 +1319,11 @@ class _TrackingBottomSheetState extends State<TrackingBottomSheet> {
 
                       return Padding(
                         padding: const EdgeInsets.symmetric(
-                          horizontal: 16.0,
-                          vertical: 8.0,
+                          horizontal: 20,
+                          vertical: 10,
                         ),
                         child: Row(
                           children: [
-                            // Left Side: Name and Status
                             Expanded(
                               child: Column(
                                 crossAxisAlignment: CrossAxisAlignment.start,
@@ -1033,47 +1332,46 @@ class _TrackingBottomSheetState extends State<TrackingBottomSheet> {
                                     sub['full_name'],
                                     style: const TextStyle(
                                       fontWeight: FontWeight.bold,
-                                      fontSize: 15,
+                                      fontSize: 14,
+                                      color: _Brand.charcoal,
                                     ),
                                   ),
-                                  const SizedBox(height: 4),
+                                  const SizedBox(height: 6),
                                   Container(
                                     padding: const EdgeInsets.symmetric(
                                       horizontal: 8,
-                                      vertical: 2,
+                                      vertical: 3,
                                     ),
                                     decoration: BoxDecoration(
-                                      color: _getStatusColor(
-                                        sub['status'],
-                                      ).withOpacity(0.1),
-                                      borderRadius: BorderRadius.circular(4),
+                                      color: tokens['bg'],
+                                      borderRadius: BorderRadius.circular(6),
                                     ),
                                     child: Text(
                                       sub['status'],
                                       style: TextStyle(
-                                        color: _getStatusColor(sub['status']),
-                                        fontWeight: FontWeight.w600,
-                                        fontSize: 11,
+                                        color: tokens['text'],
+                                        fontWeight: FontWeight.w700,
+                                        fontSize: 10,
                                       ),
                                     ),
                                   ),
                                 ],
                               ),
                             ),
-
-                            // Right Side: High Speed Matrix (Score + Dropdown)
                             Row(
                               mainAxisSize: MainAxisSize.min,
                               children: [
-                                // Quick Score Input
                                 SizedBox(
                                   width: 65,
+                                  height: 38,
                                   child: TextField(
                                     controller: scoreCtrl,
                                     keyboardType: TextInputType.number,
                                     textAlign: TextAlign.center,
                                     style: const TextStyle(
                                       fontWeight: FontWeight.bold,
+                                      fontSize: 13,
+                                      color: _Brand.charcoal,
                                     ),
                                     decoration: InputDecoration(
                                       hintText: '--',
@@ -1082,15 +1380,25 @@ class _TrackingBottomSheetState extends State<TrackingBottomSheet> {
                                           const EdgeInsets.symmetric(
                                             vertical: 10,
                                           ),
-                                      border: OutlineInputBorder(
+                                      filled: true,
+                                      fillColor: _Brand.bgSurface,
+                                      enabledBorder: OutlineInputBorder(
                                         borderRadius: BorderRadius.circular(8),
+                                        borderSide: BorderSide(
+                                          color: Colors.grey.shade200,
+                                        ),
+                                      ),
+                                      focusedBorder: OutlineInputBorder(
+                                        borderRadius: BorderRadius.circular(8),
+                                        borderSide: const BorderSide(
+                                          color: _Brand.teal,
+                                        ),
                                       ),
                                     ),
                                     onSubmitted: (val) async {
                                       final newScore = double.tryParse(val);
                                       if (newScore != null &&
                                           newScore <= widget.maxScore) {
-                                        // Automatically update status to Submitted if they enter a score
                                         await widget.repo
                                             .updateSubmissionStatus(
                                               assignmentId: widget.assignmentId,
@@ -1105,48 +1413,48 @@ class _TrackingBottomSheetState extends State<TrackingBottomSheet> {
                                   ),
                                 ),
                                 const SizedBox(width: 8),
-
-                                // Status Toggle Dropdown
                                 Container(
-                                  height: 40,
+                                  height: 38,
                                   padding: const EdgeInsets.symmetric(
                                     horizontal: 8,
                                   ),
                                   decoration: BoxDecoration(
+                                    color: Colors.white,
                                     border: Border.all(
-                                      color: Colors.grey.shade300,
+                                      color: Colors.grey.shade200,
                                     ),
                                     borderRadius: BorderRadius.circular(8),
                                   ),
                                   child: DropdownButton<String>(
                                     value: sub['status'],
                                     underline: const SizedBox(),
+                                    dropdownColor: Colors.white,
                                     icon: const Icon(
-                                      Icons.arrow_drop_down,
+                                      Icons.arrow_drop_down_rounded,
                                       size: 20,
+                                      color: _Brand.mutedText,
                                     ),
                                     items:
                                         [
-                                              'Pending',
-                                              'Submitted',
-                                              'Late',
-                                              'Missing',
-                                            ]
-                                            .map(
-                                              (s) => DropdownMenuItem(
-                                                value: s,
-                                                child: Text(
-                                                  s,
-                                                  style: const TextStyle(
-                                                    fontSize: 13,
-                                                  ),
-                                                ),
+                                          'Pending',
+                                          'Submitted',
+                                          'Late',
+                                          'Missing',
+                                        ].map((s) {
+                                          return DropdownMenuItem(
+                                            value: s,
+                                            child: Text(
+                                              s,
+                                              style: const TextStyle(
+                                                fontSize: 13,
+                                                fontWeight: FontWeight.w500,
+                                                color: _Brand.charcoal,
                                               ),
-                                            )
-                                            .toList(),
+                                            ),
+                                          );
+                                        }).toList(),
                                     onChanged: (newStatus) async {
                                       if (newStatus != null) {
-                                        // Retain the current score if they are just changing the status to Late/Missing
                                         final currentScore = double.tryParse(
                                           scoreCtrl.text,
                                         );
