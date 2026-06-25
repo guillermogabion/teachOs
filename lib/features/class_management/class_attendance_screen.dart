@@ -26,7 +26,9 @@ class ClassAttendanceScreen extends StatefulWidget {
   State<ClassAttendanceScreen> createState() => _ClassAttendanceScreenState();
 }
 
-class _ClassAttendanceScreenState extends State<ClassAttendanceScreen> {
+class _ClassAttendanceScreenState extends State<ClassAttendanceScreen>
+    with RestorationMixin<ClassAttendanceScreen> {
+  final RestorableString _classAttendanceScreen = RestorableString('');
   final _attendanceRepo = AttendanceRepository();
   DateTime _selectedDate = DateTime.now();
 
@@ -40,6 +42,14 @@ class _ClassAttendanceScreenState extends State<ClassAttendanceScreen> {
 
   bool _isLoading = true;
   bool _hasExistingData = false;
+
+  @override
+  String? get restorationId => 'class_attendance_screen';
+
+  @override
+  void restoreState(RestorationBucket? oldBucket, bool initialRestore) {
+    registerForRestoration(_classAttendanceScreen, 'class_attendance_screen');
+  }
 
   @override
   void initState() {

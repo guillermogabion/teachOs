@@ -60,12 +60,25 @@ class SectionRepository {
   // UPDATE & DELETE remain unchanged...
   Future<void> updateSection(Section section) async {
     final db = await _dbService.database;
-    await db.update(
+    final rowsAffected = await db.update(
       'sections',
       section.toMap(),
       where: 'id = ?',
       whereArgs: [section.id],
     );
+
+    // db.update() never throws on a no-match WHERE clause — it just quietly
+    // updates 0 rows. Without this check, a stale/mismatched section.id
+    // looks identical to a successful save: no exception, "Update
+    // Complete" logged, screen pops, and the framework (or anything else)
+    // silently never changes.
+    if (rowsAffected == 0) {
+      throw StateError(
+        'updateSection() affected 0 rows — no section exists with id '
+        '"${section.id}". The edit screen is likely holding a stale '
+        'Section object instead of the one actually in the database.',
+      );
+    }
   }
 
   Future<void> deleteSection(String id) async {

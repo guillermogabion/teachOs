@@ -25,6 +25,12 @@ class AssignmentRepository {
     );
   }
 
+  // Backward-compat alias — dashboard screen still calls the old name
+  Future<List<Map<String, dynamic>>> getStudentAveragesPerQuarter({
+    required String sectionId,
+    required String periodId,
+  }) => getStudentAveragesPerPeriod(sectionId: sectionId, periodId: periodId);
+
   Future<void> toggleArchiveStatus(String sectionId, int status) async {
     final db = await _dbService.database;
     await db.update(
@@ -53,13 +59,12 @@ class AssignmentRepository {
     required String type,
     required String dueDate,
     required int maxScore,
-    required int quarterNumber,
+    required String periodId,
   }) async {
     final db = await _dbService.database;
     final assignmentId = const Uuid().v4();
 
     await db.transaction((txn) async {
-      // Create the assignment
       await txn.insert('assignments', {
         'id': assignmentId,
         'section_id': sectionId,
@@ -67,7 +72,7 @@ class AssignmentRepository {
         'type': type,
         'due_date': dueDate,
         'max_score': maxScore,
-        'quarter_number': quarterNumber,
+        'period_id': periodId,
       });
 
       // Fetch all students enrolled in this class
@@ -96,7 +101,6 @@ class AssignmentRepository {
   ) async {
     final db = await _dbService.database;
 
-    // First, find which class this assignment belongs to
     final assignData = await db.query(
       'assignments',
       columns: ['section_id'],
@@ -106,7 +110,6 @@ class AssignmentRepository {
     if (assignData.isEmpty) return [];
     final sectionId = assignData.first['section_id'];
 
-    // Pull ALL currently enrolled students, and LEFT JOIN their submissions (if they exist)
     return await db.rawQuery(
       '''
       SELECT 
@@ -158,37 +161,47 @@ class AssignmentRepository {
     }
   }
 
-  Future<List<int>> getAvailableQuarters(String sectionId) async {
+  // Get available periods for a section (loaded from framework, not hardcoded quarters)
+  Future<List<Map<String, dynamic>>> getAvailablePeriods(
+    String sectionId,
+  ) async {
     final db = await _dbService.database;
-    final List<Map<String, dynamic>> result = await db.rawQuery(
-      '''
-    SELECT DISTINCT quarter_number 
-    FROM assignments 
-    WHERE section_id = ? 
-    ORDER BY quarter_number ASC
-  ''',
-      [sectionId],
+
+    final sectionData = await db.query(
+      'sections',
+      columns: ['framework_id'],
+      where: 'id = ?',
+      whereArgs: [sectionId],
     );
 
-    return result.map((row) => row['quarter_number'] as int).toList();
+    if (sectionData.isEmpty) return [];
+
+    final frameworkId = sectionData.first['framework_id'] as String;
+
+    return await db.query(
+      'academic_periods',
+      where: 'framework_id = ?',
+      whereArgs: [frameworkId],
+      orderBy: 'order_index ASC',
+    );
   }
 
-  Future<List<Map<String, dynamic>>> getStudentAveragesPerQuarter({
+  Future<List<Map<String, dynamic>>> getStudentAveragesPerPeriod({
     required String sectionId,
-    required int quarterNumber,
+    required String periodId,
   }) async {
     final db = await _dbService.database;
 
     return await db.rawQuery(
       '''
-      WITH QuarterStats AS (
+      WITH PeriodStats AS (
           SELECT 
               sub.student_id,
-              SUM(CASE WHEN sub.status IN ('Submitted', 'Late') THEN sub.score ELSE 0 END) as q_earned,
-              SUM(a.max_score) as q_possible
+              SUM(CASE WHEN sub.status IN ('Submitted', 'Late') THEN sub.score ELSE 0 END) as period_earned,
+              SUM(a.max_score) as period_possible
           FROM assignments a
           JOIN submissions sub ON a.id = sub.assignment_id
-          WHERE a.section_id = ? AND a.quarter_number = ?
+          WHERE a.section_id = ? AND a.period_id = ?
           GROUP BY sub.student_id
       ),
       OverallStats AS (
@@ -204,13 +217,13 @@ class AssignmentRepository {
       SELECT 
           s.id AS student_id,
           s.full_name,
-          COALESCE(q.q_earned, 0) AS quarter_earned,
-          COALESCE(q.q_possible, 0) AS quarter_possible,
+          COALESCE(p.period_earned, 0) AS period_earned,
+          COALESCE(p.period_possible, 0) AS period_possible,
           CASE 
-            WHEN COALESCE(q.q_possible, 0) > 0 
-            THEN ROUND((q.q_earned * 100.0) / q.q_possible, 2) 
+            WHEN COALESCE(p.period_possible, 0) > 0 
+            THEN ROUND((p.period_earned * 100.0) / p.period_possible, 2) 
             ELSE 0.0 
-          END AS quarter_average,
+          END AS period_average,
           CASE 
             WHEN COALESCE(o.total_possible, 0) > 0 
             THEN ROUND((o.total_earned * 100.0) / o.total_possible, 2) 
@@ -218,11 +231,11 @@ class AssignmentRepository {
           END AS overall_average
       FROM enrollments e
       INNER JOIN students s ON e.student_id = s.id
-      LEFT JOIN QuarterStats q ON q.student_id = s.id
+      LEFT JOIN PeriodStats p ON p.student_id = s.id
       LEFT JOIN OverallStats o ON o.student_id = s.id
       WHERE e.section_id = ?
     ''',
-      [sectionId, quarterNumber, sectionId, sectionId],
+      [sectionId, periodId, sectionId, sectionId],
     );
   }
 
@@ -231,27 +244,41 @@ class AssignmentRepository {
   ) async {
     final db = await _dbService.database;
 
-    final List<Map<String, dynamic>> quarterAverages = await db.rawQuery(
+    // Period-based averages — division-by-zero guarded
+    final List<Map<String, dynamic>> periodAverages = await db.rawQuery(
       '''
-    SELECT 
-      a.quarter_number,
-      ROUND((SUM(CASE WHEN sub.status IN ('Submitted', 'Late') THEN sub.score ELSE 0 END) * 100.0) / SUM(a.max_score), 2) AS class_quarter_average
-    FROM assignments a
-    INNER JOIN submissions sub ON sub.assignment_id = a.id
-    WHERE a.section_id = ? AND sub.status IN ('Submitted', 'Late')
-    GROUP BY a.quarter_number
-  ''',
+      SELECT 
+        a.period_id,
+        ap.name as period_name,
+        ap.order_index,
+        ROUND(
+          CASE WHEN SUM(a.max_score) > 0 
+          THEN (SUM(CASE WHEN sub.status IN ('Submitted', 'Late') THEN sub.score ELSE 0 END) * 100.0) / SUM(a.max_score)
+          ELSE 0.0 END,
+        2) AS class_period_average
+      FROM assignments a
+      INNER JOIN submissions sub ON sub.assignment_id = a.id
+      INNER JOIN academic_periods ap ON a.period_id = ap.id
+      WHERE a.section_id = ? AND sub.status IN ('Submitted', 'Late')
+      GROUP BY a.period_id
+      ORDER BY ap.order_index ASC
+    ''',
       [sectionId],
     );
 
+    // Cumulative average — division-by-zero guarded (was missing before)
     final List<Map<String, dynamic>> totalCumulative = await db.rawQuery(
       '''
-    SELECT 
-      ROUND((SUM(CASE WHEN sub.status IN ('Submitted', 'Late') THEN sub.score ELSE 0 END) * 100.0) / SUM(a.max_score), 2) AS cumulative_class_average
-    FROM assignments a
-    INNER JOIN submissions sub ON sub.assignment_id = a.id
-    WHERE a.section_id = ? AND sub.status IN ('Submitted', 'Late')
-  ''',
+      SELECT 
+        ROUND(
+          CASE WHEN SUM(a.max_score) > 0
+          THEN (SUM(CASE WHEN sub.status IN ('Submitted', 'Late') THEN sub.score ELSE 0 END) * 100.0) / SUM(a.max_score)
+          ELSE 0.0 END,
+        2) AS cumulative_class_average
+      FROM assignments a
+      INNER JOIN submissions sub ON sub.assignment_id = a.id
+      WHERE a.section_id = ? AND sub.status IN ('Submitted', 'Late')
+    ''',
       [sectionId],
     );
 
@@ -262,25 +289,33 @@ class AssignmentRepository {
           .toDouble();
     }
 
-    return {'quarters': quarterAverages, 'overall_cumulative': overall};
+    return {'periods': periodAverages, 'overall_cumulative': overall};
   }
 
   // 6. Delete Assignment and Cascade Submissions
   Future<void> deleteAssignment(String assignmentId) async {
     final db = await _dbService.database;
     await db.transaction((txn) async {
-      // Delete associated student submissions first
       await txn.delete(
         'submissions',
         where: 'assignment_id = ?',
         whereArgs: [assignmentId],
       );
-      // Delete the core assignment record
       await txn.delete(
         'assignments',
         where: 'id = ?',
         whereArgs: [assignmentId],
       );
     });
+  }
+
+  Future<void> assignPeriodToTask(String assignmentId, String periodId) async {
+    final db = await _dbService.database;
+    await db.update(
+      'assignments',
+      {'period_id': periodId},
+      where: 'id = ?',
+      whereArgs: [assignmentId],
+    );
   }
 }

@@ -58,7 +58,9 @@ class SchoolCalendarScreen extends StatefulWidget {
   State<SchoolCalendarScreen> createState() => _SchoolCalendarScreenState();
 }
 
-class _SchoolCalendarScreenState extends State<SchoolCalendarScreen> {
+class _SchoolCalendarScreenState extends State<SchoolCalendarScreen>
+    with RestorationMixin<SchoolCalendarScreen> {
+  final RestorableString _calendarScreen = RestorableString('');
   final _calendarRepo = CalendarRepository();
 
   DateTime _focusedDay = DateTime.now();
@@ -70,6 +72,14 @@ class _SchoolCalendarScreenState extends State<SchoolCalendarScreen> {
 
   Map<String, List<Map<String, dynamic>>> _events = {};
   bool _isLoading = true;
+
+  @override
+  String? get restorationId => 'school_calendar_screen';
+
+  @override
+  void restoreState(RestorationBucket? oldBucket, bool initialRestore) {
+    registerForRestoration(_calendarScreen, 'school_calendar_screen');
+  }
 
   @override
   void initState() {
@@ -167,7 +177,11 @@ class _SchoolCalendarScreenState extends State<SchoolCalendarScreen> {
                   fontSize: 18,
                 ),
               ),
-              content: SingleChildScrollView(
+              content: ConstrainedBox(
+                constraints: BoxConstraints(
+                  // Optional: set a max height if you want to prevent it from taking the whole screen
+                  maxHeight: MediaQuery.of(context).size.height * 0.6,
+                ),
                 child: Column(
                   mainAxisSize: MainAxisSize.min,
                   children: [

@@ -3,7 +3,7 @@ import 'models/section_model.dart';
 import 'repositories/section_repository.dart';
 import 'class_roster_screen.dart';
 
-// Assuming this matches your central color palette setup
+// ─── Brand Palette Tokens ────────────────────────────────────────────────────
 class _Brand {
   static const Color teal = Colors.teal;
   static final Color tealSurf = Colors.teal.shade50;
@@ -11,13 +11,37 @@ class _Brand {
   static final Color greyBorder = Colors.grey.shade200;
 }
 
-class ArchivedClassesScreen extends StatelessWidget {
+class ArchivedClassesScreen extends StatefulWidget {
   const ArchivedClassesScreen({super.key});
 
   @override
-  Widget build(BuildContext context) {
-    final sectionRepo = SectionRepository();
+  State<ArchivedClassesScreen> createState() => _ArchivedClassesScreenState();
+}
 
+class _ArchivedClassesScreenState extends State<ArchivedClassesScreen>
+    with RestorationMixin {
+  final _sectionRepo = SectionRepository();
+
+  // 1. Create a variable to cache the Future
+  late Future<List<Section>> _archivedSectionsFuture;
+
+  @override
+  String? get restorationId => 'archived_classes_screen';
+
+  @override
+  void restoreState(RestorationBucket? oldBucket, bool initialRestore) {
+    // Restore any necessary state here if you add Restorable variables later
+  }
+
+  @override
+  void initState() {
+    super.initState();
+    // 2. Assign the Future once during initialization
+    _archivedSectionsFuture = _sectionRepo.getArchivedSections();
+  }
+
+  @override
+  Widget build(BuildContext context) {
     return Scaffold(
       backgroundColor: _Brand.greySurf,
       appBar: AppBar(
@@ -47,13 +71,15 @@ class ArchivedClassesScreen extends StatelessWidget {
         ),
       ),
       body: FutureBuilder<List<Section>>(
-        future: sectionRepo.getArchivedSections(),
+        // 3. Use the cached Future here
+        future: _archivedSectionsFuture,
         builder: (context, snapshot) {
           if (snapshot.connectionState == ConnectionState.waiting) {
             return const Center(
               child: CircularProgressIndicator(color: _Brand.teal),
             );
           }
+
           if (!snapshot.hasData || snapshot.data!.isEmpty) {
             return Center(
               child: Padding(

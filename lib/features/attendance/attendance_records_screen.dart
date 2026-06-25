@@ -72,7 +72,9 @@ class AttendanceRecordsScreen extends StatefulWidget {
       _AttendanceRecordsScreenState();
 }
 
-class _AttendanceRecordsScreenState extends State<AttendanceRecordsScreen> {
+class _AttendanceRecordsScreenState extends State<AttendanceRecordsScreen>
+    with RestorationMixin<AttendanceRecordsScreen> {
+  final RestorableString _attendanceScreen = RestorableString('');
   final _attendanceRepo = AttendanceRepository();
 
   bool _isLoading = true;
@@ -93,6 +95,14 @@ class _AttendanceRecordsScreenState extends State<AttendanceRecordsScreen> {
   final Map<String, String> _studentIdToName = {};
   final Map<String, String> _studentIdToGender = {};
   Map<String, Map<String, String>> _matrixData = {};
+
+  @override
+  String? get restorationId => 'attendance_records_screen';
+
+  @override
+  void restoreState(RestorationBucket? oldBucket, bool initialRestore) {
+    registerForRestoration(_attendanceScreen, 'attendance_records_screen');
+  }
 
   @override
   void initState() {

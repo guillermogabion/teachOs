@@ -36,12 +36,23 @@ class ClassManagementScreen extends StatefulWidget {
   State<ClassManagementScreen> createState() => _ClassManagementScreenState();
 }
 
-class _ClassManagementScreenState extends State<ClassManagementScreen> {
+class _ClassManagementScreenState extends State<ClassManagementScreen>
+    with RestorationMixin<ClassManagementScreen> {
+  final RestorableString _classManagementScreen = RestorableString('');
+
   final _sectionRepo = SectionRepository();
   final _localAuth = LocalAuthentication();
 
   List<Section> _sections = [];
   bool _isLoading = true;
+
+  @override
+  String? get restorationId => 'class_management_screen';
+
+  @override
+  void restoreState(RestorationBucket? oldBucket, bool initialRestore) {
+    registerForRestoration(_classManagementScreen, 'class_management_screen');
+  }
 
   @override
   void initState() {
@@ -323,7 +334,7 @@ class _ClassManagementScreenState extends State<ClassManagementScreen> {
         mainAxisAlignment: MainAxisAlignment.spaceBetween,
         children: [
           const Text(
-            'ACTIVE THIS TERM',
+            'ACTIVE THIS SCHOOL YEAR',
             style: TextStyle(
               fontSize: 11,
               fontWeight: FontWeight.w600,

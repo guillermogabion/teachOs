@@ -1,6 +1,7 @@
 import 'package:flutter/material.dart';
 import 'package:intl/intl.dart';
 import 'repository/assignment_repository.dart';
+import '../grading/repository/gradebook_repository.dart';
 
 // ─── Unified Brand Palette ───────────────────────────────────────────────────
 class _Brand {
@@ -46,6 +47,103 @@ InputDecoration _buildInputDecoration({
   );
 }
 
+PreferredSizeWidget _buildBrandedAppBar({
+  required BuildContext context,
+  required String title,
+  String? subtitle,
+  bool showBackButton = true,
+  List<Widget>? actions,
+}) {
+  return AppBar(
+    backgroundColor: Colors.white,
+    elevation: 0,
+    surfaceTintColor: Colors.transparent,
+    titleSpacing: 0,
+    leading: showBackButton
+        ? IconButton(
+            icon: Container(
+              width: 32,
+              height: 32,
+              decoration: BoxDecoration(
+                border: Border.all(color: Colors.grey.shade200),
+                borderRadius: BorderRadius.circular(8),
+              ),
+              child: const Icon(
+                Icons.arrow_back_rounded,
+                size: 17,
+                color: Colors.black54,
+              ),
+            ),
+            onPressed: () => Navigator.pop(context),
+          )
+        : null,
+    title: subtitle == null
+        ? Text(
+            title,
+            style: const TextStyle(
+              fontWeight: FontWeight.w600,
+              color: Colors.black87,
+              fontSize: 17,
+              letterSpacing: -0.2,
+            ),
+            maxLines: 1,
+            overflow: TextOverflow.ellipsis,
+          )
+        : Column(
+            crossAxisAlignment: CrossAxisAlignment.start,
+            mainAxisAlignment: MainAxisAlignment.center,
+            children: [
+              Text(
+                title,
+                style: const TextStyle(
+                  fontWeight: FontWeight.w700,
+                  color: _Brand.charcoal,
+                  fontSize: 16,
+                ),
+                maxLines: 1,
+                overflow: TextOverflow.ellipsis,
+              ),
+              Text(
+                subtitle,
+                style: const TextStyle(
+                  fontWeight: FontWeight.w400,
+                  color: _Brand.mutedText,
+                  fontSize: 12,
+                ),
+              ),
+            ],
+          ),
+    bottom: PreferredSize(
+      preferredSize: const Size.fromHeight(0.5),
+      child: Divider(height: 0.5, thickness: 0.5, color: Colors.grey.shade200),
+    ),
+    actions: actions,
+  );
+}
+
+Widget _appBarIconButton({
+  required IconData icon,
+  required String tooltip,
+  required VoidCallback onTap,
+}) {
+  return Tooltip(
+    message: tooltip,
+    child: InkWell(
+      onTap: onTap,
+      borderRadius: BorderRadius.circular(8),
+      child: Container(
+        width: 34,
+        height: 34,
+        decoration: BoxDecoration(
+          border: Border.all(color: Colors.grey.shade200),
+          borderRadius: BorderRadius.circular(8),
+        ),
+        child: Icon(icon, size: 18, color: Colors.black54),
+      ),
+    ),
+  );
+}
+
 // ============================================================================
 // SCREEN 1: CLASS SELECTION HUB (CARDS VIEW)
 // ============================================================================
@@ -56,11 +154,22 @@ class AssignmentHubScreen extends StatefulWidget {
   State<AssignmentHubScreen> createState() => _AssignmentHubScreenState();
 }
 
-class _AssignmentHubScreenState extends State<AssignmentHubScreen> {
+class _AssignmentHubScreenState extends State<AssignmentHubScreen>
+    with RestorationMixin<AssignmentHubScreen> {
+  final RestorableString _assignmentScreen = RestorableString('');
+
   final _repo = AssignmentRepository();
   List<Map<String, dynamic>> _classes = [];
   bool _isLoading = true;
   bool _viewingArchived = false;
+
+  @override
+  String? get restorationId => 'assignment_hub_screen';
+
+  @override
+  void restoreState(RestorationBucket? oldBucket, bool initialRestore) {
+    registerForRestoration(_assignmentScreen, 'assignment_screen');
+  }
 
   @override
   void initState() {
@@ -87,36 +196,28 @@ class _AssignmentHubScreenState extends State<AssignmentHubScreen> {
   Widget build(BuildContext context) {
     return Scaffold(
       backgroundColor: _Brand.bgSurface,
-      appBar: AppBar(
-        title: Text(
-          _viewingArchived ? 'Archived Classes' : 'Assignment Management',
-          style: const TextStyle(
-            fontWeight: FontWeight.w700,
-            color: _Brand.charcoal,
-          ),
-        ),
-        backgroundColor: Colors.white,
-        elevation: 0,
-        surfaceTintColor: Colors.transparent,
+      appBar: _buildBrandedAppBar(
+        context: context,
+        title: _viewingArchived ? 'Archived Classes' : 'Assignment Management',
+        showBackButton: false,
         actions: [
-          IconButton(
-            tooltip: _viewingArchived
-                ? 'View Active Classes'
-                : 'View Archived Classes',
-            icon: Icon(
-              _viewingArchived
+          Padding(
+            padding: const EdgeInsets.only(right: 12),
+            child: _appBarIconButton(
+              icon: _viewingArchived
                   ? Icons.unarchive_rounded
-                  : Icons.archive_rounded,
-              color: _Brand.tealMid,
+                  : Icons.archive_outlined,
+              tooltip: _viewingArchived
+                  ? 'View Active Classes'
+                  : 'Archived classes',
+              onTap: () {
+                setState(() {
+                  _viewingArchived = !_viewingArchived;
+                });
+                _loadClasses();
+              },
             ),
-            onPressed: () {
-              setState(() {
-                _viewingArchived = !_viewingArchived;
-              });
-              _loadClasses();
-            },
           ),
-          const SizedBox(width: 8),
         ],
       ),
       body: _isLoading
@@ -338,8 +439,8 @@ class ClassAssignmentsScreen extends StatefulWidget {
 class _ClassAssignmentsScreenState extends State<ClassAssignmentsScreen> {
   final _repo = AssignmentRepository();
   List<Map<String, dynamic>> _assignments = [];
-  List<int> _quarters = [1];
-  int _selectedQuarter = 1;
+  List<Map<String, dynamic>> _periods = [];
+  String _selectedPeriodId = '';
   Map<String, dynamic>? _classSummary;
   bool _isLoading = true;
 
@@ -351,15 +452,19 @@ class _ClassAssignmentsScreenState extends State<ClassAssignmentsScreen> {
 
   Future<void> _loadDashboardData() async {
     setState(() => _isLoading = true);
-    final quartersList = await _repo.getAvailableQuarters(widget.sectionId);
+    final periodsList = await _repo.getAvailablePeriods(widget.sectionId);
     final summary = await _repo.getClassPerformanceSummary(widget.sectionId);
     final assigns = await _repo.getAssignments(widget.sectionId);
 
     if (mounted) {
       setState(() {
-        _quarters = quartersList.isEmpty ? [1] : quartersList;
-        if (!_quarters.contains(_selectedQuarter) && _quarters.isNotEmpty) {
-          _selectedQuarter = _quarters.last;
+        _periods = periodsList.isEmpty ? [] : periodsList;
+        if (_periods.isNotEmpty && _selectedPeriodId.isEmpty) {
+          _selectedPeriodId = _periods.first['id'] as String;
+        } else if (_periods.isNotEmpty) {
+          if (!_periods.any((p) => p['id'] == _selectedPeriodId)) {
+            _selectedPeriodId = _periods.first['id'] as String;
+          }
         }
         _classSummary = summary;
         _assignments = assigns;
@@ -372,7 +477,7 @@ class _ClassAssignmentsScreenState extends State<ClassAssignmentsScreen> {
     final titleCtrl = TextEditingController();
     final scoreCtrl = TextEditingController(text: '100');
     String selectedType = 'Homework';
-    int selectedQuarter = _selectedQuarter;
+    String selectedPeriodId = _selectedPeriodId;
     DateTime selectedDate = DateTime.now().add(const Duration(days: 1));
 
     await showDialog(
@@ -405,55 +510,74 @@ class _ClassAssignmentsScreenState extends State<ClassAssignmentsScreen> {
                   decoration: _buildInputDecoration(labelText: 'Title'),
                 ),
                 const SizedBox(height: 14),
-                Row(
-                  children: [
-                    Expanded(
-                      flex: 2,
-                      child: DropdownButtonFormField<String>(
-                        value: selectedType,
-                        dropdownColor: Colors.white,
-                        style: const TextStyle(
-                          fontSize: 14,
-                          fontWeight: FontWeight.w600,
-                          color: _Brand.charcoal,
-                        ),
-                        decoration: _buildInputDecoration(
-                          labelText: 'Category',
-                        ),
-                        items: ['Homework', 'Project', 'Activity']
-                            .map(
-                              (t) => DropdownMenuItem(value: t, child: Text(t)),
-                            )
-                            .toList(),
-                        onChanged: (v) =>
-                            setModalState(() => selectedType = v!),
+                Builder(
+                  builder: (context) {
+                    final categoryField = DropdownButtonFormField<String>(
+                      value: selectedType,
+                      dropdownColor: Colors.white,
+                      style: const TextStyle(
+                        fontSize: 14,
+                        fontWeight: FontWeight.w600,
+                        color: _Brand.charcoal,
                       ),
-                    ),
-                    const SizedBox(width: 10),
-                    Expanded(
-                      flex: 1,
-                      child: DropdownButtonFormField<int>(
-                        value: selectedQuarter,
-                        dropdownColor: Colors.white,
-                        style: const TextStyle(
-                          fontSize: 14,
-                          fontWeight: FontWeight.w600,
-                          color: _Brand.charcoal,
-                        ),
-                        decoration: _buildInputDecoration(labelText: 'Quarter'),
-                        items: List.generate(8, (i) => i + 1)
-                            .map(
-                              (q) => DropdownMenuItem(
-                                value: q,
-                                child: Text('Q$q'),
-                              ),
-                            )
-                            .toList(),
-                        onChanged: (v) =>
-                            setModalState(() => selectedQuarter = v!),
+                      decoration: _buildInputDecoration(labelText: 'Category'),
+                      items: ['Homework', 'Project', 'Activity']
+                          .map(
+                            (t) => DropdownMenuItem(value: t, child: Text(t)),
+                          )
+                          .toList(),
+                      onChanged: (v) => setModalState(() => selectedType = v!),
+                    );
+
+                    final termField = DropdownButtonFormField<String>(
+                      value: selectedPeriodId,
+                      dropdownColor: Colors.white,
+                      style: const TextStyle(
+                        fontSize: 14,
+                        fontWeight: FontWeight.w600,
+                        color: _Brand.charcoal,
                       ),
-                    ),
-                  ],
+                      decoration: _buildInputDecoration(labelText: 'Term'),
+                      items: _periods
+                          .map(
+                            (p) => DropdownMenuItem(
+                              value: p['id'] as String,
+                              child: Text(p['name'] as String),
+                            ),
+                          )
+                          .toList(),
+                      onChanged: (v) =>
+                          setModalState(() => selectedPeriodId = v!),
+                    );
+
+                    // Side by side runs out of room on narrow phone widths
+                    // (was overflowing by ~21px), so stack Term underneath
+                    // Category once the screen gets this tight. Deliberately
+                    // NOT a LayoutBuilder: AlertDialog measures its content
+                    // with an internal IntrinsicWidth pass, and LayoutBuilder
+                    // doesn't support being measured that way — it crashes
+                    // the whole dialog (RenderBox was not laid out / hasSize
+                    // assertion). MediaQuery just reads a value, so it's safe.
+                    final isNarrow = MediaQuery.of(context).size.width < 400;
+
+                    if (isNarrow) {
+                      return Column(
+                        children: [
+                          categoryField,
+                          const SizedBox(height: 14),
+                          termField,
+                        ],
+                      );
+                    }
+
+                    return Row(
+                      children: [
+                        Expanded(flex: 2, child: categoryField),
+                        const SizedBox(width: 10),
+                        Expanded(flex: 1, child: termField),
+                      ],
+                    );
+                  },
                 ),
                 const SizedBox(height: 14),
                 TextField(
@@ -538,7 +662,7 @@ class _ClassAssignmentsScreenState extends State<ClassAssignmentsScreen> {
                   type: selectedType,
                   dueDate: DateFormat('yyyy-MM-dd').format(selectedDate),
                   maxScore: int.parse(scoreCtrl.text),
-                  quarterNumber: selectedQuarter,
+                  periodId: selectedPeriodId,
                 );
 
                 if (mounted) {
@@ -623,6 +747,7 @@ class _ClassAssignmentsScreenState extends State<ClassAssignmentsScreen> {
       ),
       builder: (context) => TrackingBottomSheet(
         assignmentId: assignmentId,
+        sectionId: widget.sectionId, // ← pass through
         title: title,
         maxScore: maxScore,
         repo: _repo,
@@ -630,6 +755,8 @@ class _ClassAssignmentsScreenState extends State<ClassAssignmentsScreen> {
     ).then((_) => _loadDashboardData());
   }
 
+  // FIX 1: was passing quarterNumber: _selectedQuarter (undefined).
+  // Now passes periodId: _selectedPeriodId to match the updated constructor.
   void _openStudentAveragesModal() {
     showModalBottomSheet(
       context: context,
@@ -640,7 +767,7 @@ class _ClassAssignmentsScreenState extends State<ClassAssignmentsScreen> {
       ),
       builder: (context) => StudentAveragesSheet(
         sectionId: widget.sectionId,
-        quarterNumber: _selectedQuarter,
+        periodId: _selectedPeriodId,
         repo: _repo,
       ),
     );
@@ -657,40 +784,36 @@ class _ClassAssignmentsScreenState extends State<ClassAssignmentsScreen> {
   @override
   Widget build(BuildContext context) {
     final filteredAssignments = _assignments
-        .where((a) => a['quarter_number'] == _selectedQuarter)
+        .where((a) => a['period_id'] == _selectedPeriodId)
         .toList();
 
-    double currentQuarterAvg = 0.0;
+    double currentPeriodAvg = 0.0;
+    String selectedPeriodName = '';
+
     if (_classSummary != null) {
-      final qStats = (_classSummary!['quarters'] as List).firstWhere(
-        (q) => q['quarter_number'] == _selectedQuarter,
-        orElse: () => {'class_quarter_average': 0.0},
+      final periodStats = (_classSummary!['periods'] as List).firstWhere(
+        (p) => p['period_id'] == _selectedPeriodId,
+        orElse: () => {'class_period_average': 0.0, 'period_name': ''},
       );
-      currentQuarterAvg = (qStats['class_quarter_average'] as num).toDouble();
+      currentPeriodAvg = (periodStats['class_period_average'] as num)
+          .toDouble();
+      selectedPeriodName = periodStats['period_name'] as String? ?? '';
     }
 
     final overallCumulative = _classSummary?['overall_cumulative'] ?? 0.0;
 
     return Scaffold(
       backgroundColor: _Brand.bgSurface,
-      appBar: AppBar(
-        title: Text(
-          widget.sectionName,
-          style: const TextStyle(
-            fontWeight: FontWeight.w700,
-            color: _Brand.charcoal,
-          ),
-        ),
-        backgroundColor: Colors.white,
-        elevation: 0,
-        surfaceTintColor: Colors.transparent,
+      appBar: _buildBrandedAppBar(
+        context: context,
+        title: widget.sectionName,
+        subtitle: 'Assignment Dashboard',
       ),
       body: _isLoading
           ? const Center(child: CircularProgressIndicator(color: _Brand.teal))
           : Column(
               crossAxisAlignment: CrossAxisAlignment.start,
               children: [
-                // Executive Executive Dashboard Banner
                 Container(
                   margin: const EdgeInsets.symmetric(
                     horizontal: 20,
@@ -708,8 +831,8 @@ class _ClassAssignmentsScreenState extends State<ClassAssignmentsScreen> {
                     mainAxisAlignment: MainAxisAlignment.spaceAround,
                     children: [
                       _buildMetricStat(
-                        'Quarter $_selectedQuarter Average',
-                        '$currentQuarterAvg%',
+                        '$selectedPeriodName Average',
+                        '$currentPeriodAvg%',
                       ),
                       Container(width: 1, height: 36, color: Colors.white24),
                       _buildMetricStat(
@@ -719,8 +842,6 @@ class _ClassAssignmentsScreenState extends State<ClassAssignmentsScreen> {
                     ],
                   ),
                 ),
-
-                // Context Filter and Configuration Setup Row
                 Container(
                   color: Colors.transparent,
                   padding: const EdgeInsets.symmetric(
@@ -733,12 +854,14 @@ class _ClassAssignmentsScreenState extends State<ClassAssignmentsScreen> {
                         child: SingleChildScrollView(
                           scrollDirection: Axis.horizontal,
                           child: Row(
-                            children: _quarters.map((q) {
-                              final isSelected = _selectedQuarter == q;
+                            children: _periods.map((p) {
+                              final periodId = p['id'] as String;
+                              final periodName = p['name'] as String;
+                              final isSelected = _selectedPeriodId == periodId;
                               return Padding(
                                 padding: const EdgeInsets.only(right: 8.0),
                                 child: ChoiceChip(
-                                  label: Text('Quarter $q'),
+                                  label: Text(periodName),
                                   selected: isSelected,
                                   selectedColor: _Brand.tealSurf,
                                   backgroundColor: Colors.white,
@@ -758,7 +881,9 @@ class _ClassAssignmentsScreenState extends State<ClassAssignmentsScreen> {
                                   ),
                                   onSelected: (selected) {
                                     if (selected)
-                                      setState(() => _selectedQuarter = q);
+                                      setState(
+                                        () => _selectedPeriodId = periodId,
+                                      );
                                   },
                                 ),
                               );
@@ -787,13 +912,11 @@ class _ClassAssignmentsScreenState extends State<ClassAssignmentsScreen> {
                   ),
                 ),
                 const SizedBox(height: 10),
-
-                // Core Tasks Engine Pipeline
                 Expanded(
                   child: filteredAssignments.isEmpty
                       ? Center(
                           child: Text(
-                            'No active performance tasks assigned to Quarter $_selectedQuarter.',
+                            'No active performance tasks assigned to $selectedPeriodName.',
                             style: const TextStyle(
                               fontSize: 14,
                               color: _Brand.mutedText,
@@ -951,15 +1074,16 @@ class _ClassAssignmentsScreenState extends State<ClassAssignmentsScreen> {
 // ============================================================================
 // MODAL MATRIX SHEET: STUDENT AVERAGES
 // ============================================================================
+// FIX 2: Replaced `int quarterNumber` with `String periodId` throughout this widget.
 class StudentAveragesSheet extends StatefulWidget {
   final String sectionId;
-  final int quarterNumber;
+  final String periodId; // was: int quarterNumber
   final AssignmentRepository repo;
 
   const StudentAveragesSheet({
     super.key,
     required this.sectionId,
-    required this.quarterNumber,
+    required this.periodId,
     required this.repo,
   });
 
@@ -980,9 +1104,10 @@ class _StudentAveragesSheetState extends State<StudentAveragesSheet> {
   }
 
   Future<void> _loadStats() async {
-    final data = await widget.repo.getStudentAveragesPerQuarter(
+    // FIX 3: was quarterNumber: widget.quarterNumber — now uses periodId:
+    final data = await widget.repo.getStudentAveragesPerPeriod(
       sectionId: widget.sectionId,
-      quarterNumber: widget.quarterNumber,
+      periodId: widget.periodId,
     );
     if (mounted) {
       setState(() {
@@ -1004,9 +1129,10 @@ class _StudentAveragesSheetState extends State<StudentAveragesSheet> {
               ? a['full_name'].compareTo(b['full_name'])
               : b['full_name'].compareTo(a['full_name']);
         } else if (columnIndex == 1) {
+          // FIX 4: was quarter_average — DB column is now period_average
           return ascending
-              ? a['quarter_average'].compareTo(b['quarter_average'])
-              : b['quarter_average'].compareTo(a['quarter_average']);
+              ? a['period_average'].compareTo(b['period_average'])
+              : b['period_average'].compareTo(a['period_average']);
         } else if (columnIndex == 2) {
           return ascending
               ? a['overall_average'].compareTo(b['overall_average'])
@@ -1025,6 +1151,12 @@ class _StudentAveragesSheetState extends State<StudentAveragesSheet> {
 
   @override
   Widget build(BuildContext context) {
+    // Derive display name from the period data in _studentStats if available,
+    // or fall back to the raw periodId.
+    final periodLabel = _studentStats.isNotEmpty
+        ? 'Period Performance Ledger'
+        : 'Performance Ledger';
+
     return Container(
       height: MediaQuery.of(context).size.height * 0.85,
       padding: const EdgeInsets.only(top: 16),
@@ -1036,7 +1168,7 @@ class _StudentAveragesSheetState extends State<StudentAveragesSheet> {
               mainAxisAlignment: MainAxisAlignment.spaceBetween,
               children: [
                 Text(
-                  'Quarter ${widget.quarterNumber} Performance Ledger',
+                  periodLabel,
                   style: const TextStyle(
                     fontSize: 16,
                     fontWeight: FontWeight.bold,
@@ -1088,7 +1220,7 @@ class _StudentAveragesSheetState extends State<StudentAveragesSheet> {
                               onSort: (index, asc) => _sortData(index, asc),
                             ),
                             DataColumn(
-                              label: Text('Q${widget.quarterNumber} Avg'),
+                              label: const Text('Period Avg'),
                               numeric: true,
                               onSort: (index, asc) => _sortData(index, asc),
                             ),
@@ -1099,7 +1231,8 @@ class _StudentAveragesSheetState extends State<StudentAveragesSheet> {
                             ),
                           ],
                           rows: _studentStats.map((stat) {
-                            final qAvg = (stat['quarter_average'] as num)
+                            // FIX 4 (cont.): was quarter_average / quarter_earned / quarter_possible
+                            final pAvg = (stat['period_average'] as num)
                                 .toDouble();
                             final oAvg = (stat['overall_average'] as num)
                                 .toDouble();
@@ -1122,15 +1255,15 @@ class _StudentAveragesSheetState extends State<StudentAveragesSheet> {
                                     crossAxisAlignment: CrossAxisAlignment.end,
                                     children: [
                                       Text(
-                                        '$qAvg%',
+                                        '$pAvg%',
                                         style: TextStyle(
                                           fontWeight: FontWeight.bold,
-                                          color: _getGradeColor(qAvg),
+                                          color: _getGradeColor(pAvg),
                                           fontSize: 13,
                                         ),
                                       ),
                                       Text(
-                                        '${stat['quarter_earned']}/${stat['quarter_possible']} pts',
+                                        '${stat['period_earned']}/${stat['period_possible']} pts',
                                         style: const TextStyle(
                                           fontSize: 10,
                                           color: _Brand.mutedText,
@@ -1169,6 +1302,7 @@ class _StudentAveragesSheetState extends State<StudentAveragesSheet> {
 // ============================================================================
 class TrackingBottomSheet extends StatefulWidget {
   final String assignmentId;
+  final String sectionId; // ← NEW: needed to sync score into Gradebook
   final String title;
   final int maxScore;
   final AssignmentRepository repo;
@@ -1176,6 +1310,7 @@ class TrackingBottomSheet extends StatefulWidget {
   const TrackingBottomSheet({
     super.key,
     required this.assignmentId,
+    required this.sectionId,
     required this.title,
     required this.maxScore,
     required this.repo,
@@ -1188,6 +1323,27 @@ class TrackingBottomSheet extends StatefulWidget {
 class _TrackingBottomSheetState extends State<TrackingBottomSheet> {
   List<Map<String, dynamic>> _submissions = [];
   bool _isLoading = true;
+
+  // Gradebook bridge — syncs scores across to the Assignment category
+  final _gradeRepo = GradebookRepository();
+
+  /// After a score is saved in the Dashboard, mirror it into the Gradebook.
+  /// Only syncs when status is Submitted or Late (i.e. a real score exists).
+  Future<void> _syncToGradebook({
+    required String studentId,
+    required String status,
+    required double? score,
+  }) async {
+    final shouldSync = status == 'Submitted' || status == 'Late';
+    await _gradeRepo.syncSubmissionToGradebook(
+      sectionId: widget.sectionId,
+      assignmentId: widget.assignmentId,
+      studentId: studentId,
+      score: shouldSync ? score : null,
+      maxScore: widget.maxScore,
+      assignmentTitle: widget.title,
+    );
+  }
 
   @override
   void initState() {
@@ -1265,7 +1421,6 @@ class _TrackingBottomSheetState extends State<TrackingBottomSheet> {
           ),
           const SizedBox(height: 14),
           const Divider(color: Color(0xFFF3F4F6), thickness: 1.5),
-
           Expanded(
             child: _isLoading
                 ? const Center(
@@ -1407,6 +1562,13 @@ class _TrackingBottomSheetState extends State<TrackingBottomSheet> {
                                               status: 'Submitted',
                                               score: newScore,
                                             );
+                                        // ← Sync score to Gradebook
+                                        await _syncToGradebook(
+                                          studentId: sub['student_id']
+                                              .toString(),
+                                          status: 'Submitted',
+                                          score: newScore,
+                                        );
                                         _loadSubmissions();
                                       }
                                     },
@@ -1466,6 +1628,13 @@ class _TrackingBottomSheetState extends State<TrackingBottomSheet> {
                                               status: newStatus,
                                               score: currentScore,
                                             );
+                                        // ← Sync status+score change to Gradebook
+                                        await _syncToGradebook(
+                                          studentId: sub['student_id']
+                                              .toString(),
+                                          status: newStatus,
+                                          score: currentScore,
+                                        );
                                         _loadSubmissions();
                                       }
                                     },

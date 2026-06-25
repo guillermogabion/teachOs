@@ -2,10 +2,8 @@ import 'package:flutter/material.dart';
 import '../../features/class_management/models/section_model.dart';
 import '../../features/class_management/repositories/section_repository.dart';
 import './class_gradebook_screen.dart';
-import './archived_gradebook_screen.dart';
-import './curriculum_settings_screen.dart';
 
-// ─── Brand palette (shared with ClassManagementScreen) ────────────────────────
+// ─── Brand palette (shared with GradebookScreen) ──────────────────────────────
 class _Brand {
   static const tealDark = Color(0xFF085041);
   static const tealMid = Color(0xFF0F6E56);
@@ -15,18 +13,35 @@ class _Brand {
 }
 // ─────────────────────────────────────────────────────────────────────────────
 
-class GradebookScreen extends StatefulWidget {
-  const GradebookScreen({super.key});
+/// Classes from past school years. A class lands here automatically once
+/// SectionRepository's current-school-year calculation moves past it —
+/// the same rule the Class Management module already uses.
+class ArchivedGradebookScreen extends StatefulWidget {
+  const ArchivedGradebookScreen({super.key});
 
   @override
-  State<GradebookScreen> createState() => _GradebookScreenState();
+  State<ArchivedGradebookScreen> createState() =>
+      _ArchivedGradebookScreenState();
 }
 
-class _GradebookScreenState extends State<GradebookScreen> {
+class _ArchivedGradebookScreenState extends State<ArchivedGradebookScreen>
+    with RestorationMixin<ArchivedGradebookScreen> {
+  final RestorableString _archivedGradebookScreen = RestorableString('');
   final _sectionRepo = SectionRepository();
 
   List<Section> _sections = [];
   bool _isLoading = true;
+
+  @override
+  String? get restorationId => 'archived_gradebook_screen';
+
+  @override
+  void restoreState(RestorationBucket? oldBucket, bool initialRestore) {
+    registerForRestoration(
+      _archivedGradebookScreen,
+      'archived_gradebook_screen',
+    );
+  }
 
   @override
   void initState() {
@@ -34,25 +49,14 @@ class _GradebookScreenState extends State<GradebookScreen> {
     _loadSections();
   }
 
-  // Only classes belonging to the current school year show up here.
-  // Anything from a prior school year is filtered out by the repo and
-  // surfaces instead on ArchivedGradebookScreen — same rule Class
-  // Management uses for getActiveSections()/getArchivedSections().
   Future<void> _loadSections() async {
-    final sections = await _sectionRepo.getActiveSections();
+    final sections = await _sectionRepo.getArchivedSections();
     if (mounted) {
       setState(() {
         _sections = sections;
         _isLoading = false;
       });
     }
-  }
-
-  void _openClass(Section section) {
-    Navigator.push(
-      context,
-      MaterialPageRoute(builder: (_) => ClassGradebookScreen(section: section)),
-    ).then((_) => _loadSections());
   }
 
   // ── Build ──────────────────────────────────────────────────────────────────
@@ -66,11 +70,9 @@ class _GradebookScreenState extends State<GradebookScreen> {
           ? const Center(child: CircularProgressIndicator(color: _Brand.teal))
           : _sections.isEmpty
           ? _buildEmptyState()
-          : _buildList(),
+          : _buildGroupedList(),
     );
   }
-
-  // ── AppBar ─────────────────────────────────────────────────────────────────
 
   PreferredSizeWidget _buildAppBar() {
     return AppBar(
@@ -95,7 +97,7 @@ class _GradebookScreenState extends State<GradebookScreen> {
         onPressed: () => Navigator.pop(context),
       ),
       title: const Text(
-        'Gradebook',
+        'Archived gradebooks',
         style: TextStyle(
           fontWeight: FontWeight.w600,
           color: Colors.black87,
@@ -109,63 +111,6 @@ class _GradebookScreenState extends State<GradebookScreen> {
           height: 0.5,
           thickness: 0.5,
           color: Colors.grey.shade200,
-        ),
-      ),
-      actions: [
-        Padding(
-          padding: const EdgeInsets.only(right: 8),
-          child: _iconButton(
-            icon: Icons.settings_suggest_outlined,
-            tooltip: 'Curriculum & Grading Setup',
-            onTap: () {
-              Navigator.push(
-                context,
-                MaterialPageRoute(
-                  builder: (_) => const CurriculumSettingsScreen(),
-                ),
-              ).then(
-                (_) => _loadSections(),
-              ); // Refresh in case frameworks changed
-            },
-          ),
-        ),
-        Padding(
-          padding: const EdgeInsets.only(right: 12),
-          child: _iconButton(
-            icon: Icons.archive_outlined,
-            tooltip: 'Archived gradebooks',
-            onTap: () {
-              Navigator.push(
-                context,
-                MaterialPageRoute(
-                  builder: (_) => const ArchivedGradebookScreen(),
-                ),
-              ).then((_) => _loadSections());
-            },
-          ),
-        ),
-      ],
-    );
-  }
-
-  Widget _iconButton({
-    required IconData icon,
-    required String tooltip,
-    required VoidCallback onTap,
-  }) {
-    return Tooltip(
-      message: tooltip,
-      child: InkWell(
-        onTap: onTap,
-        borderRadius: BorderRadius.circular(8),
-        child: Container(
-          width: 34,
-          height: 34,
-          decoration: BoxDecoration(
-            border: Border.all(color: Colors.grey.shade200),
-            borderRadius: BorderRadius.circular(8),
-          ),
-          child: Icon(icon, size: 18, color: Colors.black54),
         ),
       ),
     );
@@ -188,14 +133,14 @@ class _GradebookScreenState extends State<GradebookScreen> {
                 borderRadius: BorderRadius.circular(14),
               ),
               child: const Icon(
-                Icons.calculate_rounded,
+                Icons.archive_outlined,
                 color: _Brand.tealMid,
                 size: 28,
               ),
             ),
             const SizedBox(height: 16),
             const Text(
-              'No active classes',
+              'No archived classes',
               style: TextStyle(
                 fontSize: 16,
                 fontWeight: FontWeight.w600,
@@ -204,7 +149,7 @@ class _GradebookScreenState extends State<GradebookScreen> {
             ),
             const SizedBox(height: 6),
             const Text(
-              'No classes are set up for this term yet. Add a class first, or check the Archive for past school years.',
+              'Classes from past school years will show up here once a new term begins.',
               textAlign: TextAlign.center,
               style: TextStyle(
                 fontSize: 13,
@@ -218,57 +163,74 @@ class _GradebookScreenState extends State<GradebookScreen> {
     );
   }
 
-  // ── List ───────────────────────────────────────────────────────────────────
+  // ── Grouped List (by School Year) ─────────────────────────────────────────
 
-  Widget _buildList() {
+  Widget _buildGroupedList() {
+    // Repo already orders by school_year_id DESC, so a simple consecutive
+    // grouping preserves newest-to-oldest ordering without re-sorting.
+    final List<MapEntry<String, List<Section>>> groups = [];
+    for (final section in _sections) {
+      if (groups.isNotEmpty && groups.last.key == section.schoolYearId) {
+        groups.last.value.add(section);
+      } else {
+        groups.add(MapEntry(section.schoolYearId, [section]));
+      }
+    }
+
     return RefreshIndicator(
       onRefresh: _loadSections,
       color: _Brand.teal,
       child: ListView.builder(
         padding: const EdgeInsets.fromLTRB(16, 16, 16, 24),
-        itemCount: _sections.length + 1, // +1 for header
+        itemCount: groups.length,
         itemBuilder: (context, index) {
-          if (index == 0) return _buildListHeader();
-          final section = _sections[index - 1];
-          return _buildClassCard(section);
+          final group = groups[index];
+          return Padding(
+            padding: const EdgeInsets.fromLTRB(0, 0, 0, 20),
+            child: Column(
+              crossAxisAlignment: CrossAxisAlignment.start,
+              children: [
+                _buildYearHeader(group.key, group.value.length),
+                const SizedBox(height: 10),
+                ...group.value.map(_buildClassCard),
+              ],
+            ),
+          );
         },
       ),
     );
   }
 
-  Widget _buildListHeader() {
-    return Padding(
-      padding: const EdgeInsets.fromLTRB(0, 0, 0, 12),
-      child: Row(
-        mainAxisAlignment: MainAxisAlignment.spaceBetween,
-        children: [
-          const Text(
-            'This School Year',
-            style: TextStyle(
+  Widget _buildYearHeader(String schoolYearId, int count) {
+    return Row(
+      mainAxisAlignment: MainAxisAlignment.spaceBetween,
+      children: [
+        Text(
+          'S.Y. $schoolYearId',
+          style: const TextStyle(
+            fontSize: 11,
+            fontWeight: FontWeight.w600,
+            color: Colors.black38,
+            letterSpacing: 0.7,
+          ),
+        ),
+        Container(
+          padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 3),
+          decoration: BoxDecoration(
+            color: _Brand.tealSurf,
+            borderRadius: BorderRadius.circular(99),
+            border: Border.all(color: _Brand.tealBorder, width: 0.8),
+          ),
+          child: Text(
+            '$count ${count == 1 ? 'class' : 'classes'}',
+            style: const TextStyle(
               fontSize: 11,
-              fontWeight: FontWeight.w600,
-              color: Colors.black38,
-              letterSpacing: 0.7,
+              color: _Brand.tealMid,
+              fontWeight: FontWeight.w500,
             ),
           ),
-          Container(
-            padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 3),
-            decoration: BoxDecoration(
-              color: _Brand.tealSurf,
-              borderRadius: BorderRadius.circular(99),
-              border: Border.all(color: _Brand.tealBorder, width: 0.8),
-            ),
-            child: Text(
-              '${_sections.length} ${_sections.length == 1 ? 'class' : 'classes'}',
-              style: const TextStyle(
-                fontSize: 11,
-                color: _Brand.tealMid,
-                fontWeight: FontWeight.w500,
-              ),
-            ),
-          ),
-        ],
-      ),
+        ),
+      ],
     );
   }
 
@@ -278,7 +240,14 @@ class _GradebookScreenState extends State<GradebookScreen> {
     return Padding(
       padding: const EdgeInsets.fromLTRB(0, 0, 0, 10),
       child: InkWell(
-        onTap: () => _openClass(section),
+        onTap: () {
+          Navigator.push(
+            context,
+            MaterialPageRoute(
+              builder: (_) => ClassGradebookScreen(section: section),
+            ),
+          );
+        },
         borderRadius: BorderRadius.circular(14),
         child: Container(
           decoration: BoxDecoration(
@@ -305,31 +274,13 @@ class _GradebookScreenState extends State<GradebookScreen> {
                       maxLines: 1,
                       overflow: TextOverflow.ellipsis,
                     ),
-                    const SizedBox(height: 4),
-                    Row(
-                      children: [
-                        Icon(
-                          Icons.groups_2_rounded,
-                          size: 13,
-                          color: Colors.black38,
-                        ),
-                        const SizedBox(width: 4),
-                        FutureBuilder<Map<String, int>>(
-                          future: _sectionRepo.getGenderCounts(section.id),
-                          builder: (context, snap) {
-                            final total =
-                                (snap.data?['males'] ?? 0) +
-                                (snap.data?['females'] ?? 0);
-                            return Text(
-                              '$total student${total == 1 ? '' : 's'} enrolled',
-                              style: const TextStyle(
-                                fontSize: 12,
-                                color: Colors.black45,
-                              ),
-                            );
-                          },
-                        ),
-                      ],
+                    const SizedBox(height: 2),
+                    Text(
+                      'Adviser: ${section.adviserName ?? 'Unassigned'}',
+                      style: const TextStyle(
+                        fontSize: 12,
+                        color: Colors.black45,
+                      ),
                     ),
                   ],
                 ),

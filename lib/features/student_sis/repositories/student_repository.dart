@@ -58,14 +58,28 @@ class StudentRepository {
   ) async {
     final db = await DatabaseService.instance.database;
 
-    // Search for a matching name or contact number
+    final trimmedName = fullName.trim();
+    final trimmedContact = contact.trim();
+
+    // Only check name (always required)
+    // Only add contact to the match if it was actually supplied
+    if (trimmedContact.isEmpty) {
+      // No contact provided — match on name only
+      final List<Map<String, dynamic>> maps = await db.query(
+        'students',
+        where: 'LOWER(full_name) = LOWER(?)',
+        whereArgs: [trimmedName],
+      );
+      return maps.map((map) => Student.fromMap(map)).toList();
+    }
+
+    // Both supplied — require BOTH to match (not OR)
     final List<Map<String, dynamic>> maps = await db.query(
       'students',
-      where: 'full_name = ? OR parent_contact = ?',
-      whereArgs: [fullName, contact],
+      where: 'LOWER(full_name) = LOWER(?) AND parent_contact = ?',
+      whereArgs: [trimmedName, trimmedContact],
     );
 
-    // Assuming you have a fromMap method in your Student model
     return maps.map((map) => Student.fromMap(map)).toList();
   }
 }

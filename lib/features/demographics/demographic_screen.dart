@@ -11,7 +11,9 @@ class StudentDemographicsScreen extends StatefulWidget {
       _StudentDemographicsScreenState();
 }
 
-class _StudentDemographicsScreenState extends State<StudentDemographicsScreen> {
+class _StudentDemographicsScreenState extends State<StudentDemographicsScreen>
+    with RestorationMixin<StudentDemographicsScreen> {
+  final RestorableString _demographicsScreen = RestorableString('');
   final _attendanceRepo = AttendanceRepository();
   bool _isLoading = true;
 
@@ -45,6 +47,14 @@ class _StudentDemographicsScreenState extends State<StudentDemographicsScreen> {
     {'value': '11', 'label': 'November'},
     {'value': '12', 'label': 'December'},
   ];
+
+  @override
+  String? get restorationId => 'demographics_screen';
+
+  @override
+  void restoreState(RestorationBucket? oldBucket, bool initialRestore) {
+    registerForRestoration(_demographicsScreen, 'demographics_screen');
+  }
 
   @override
   void initState() {

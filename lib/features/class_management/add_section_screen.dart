@@ -1,6 +1,7 @@
 import 'package:flutter/material.dart';
 import 'models/section_model.dart';
 import 'repositories/section_repository.dart';
+import '../grading/repository/framework_repository.dart';
 
 class _Brand {
   static const Color teal = Colors.teal;
@@ -17,9 +18,15 @@ class AddSectionScreen extends StatefulWidget {
   State<AddSectionScreen> createState() => _AddSectionScreenState();
 }
 
-class _AddSectionScreenState extends State<AddSectionScreen> {
+class _AddSectionScreenState extends State<AddSectionScreen>
+    with RestorationMixin<AddSectionScreen> {
+  final RestorableString _addSectionScreen = RestorableString('');
   final _formKey = GlobalKey<FormState>();
   final _repo = SectionRepository();
+  final _frameworkRepo = FrameworkRepository();
+
+  String _selectedFrameworkId = 'default_framework';
+  List<GradingFramework> _frameworks = [];
 
   late TextEditingController _nameController;
   late TextEditingController _adviserController;
@@ -27,6 +34,14 @@ class _AddSectionScreenState extends State<AddSectionScreen> {
   int _selectedGradeLevel = 7;
 
   bool get isEditMode => widget.sectionToEdit != null;
+
+  @override
+  String? get restorationId => 'add_section_screen';
+
+  @override
+  void restoreState(RestorationBucket? oldBucket, bool initialRestore) {
+    registerForRestoration(_addSectionScreen, 'add_section_screen');
+  }
 
   @override
   void initState() {
@@ -44,7 +59,15 @@ class _AddSectionScreenState extends State<AddSectionScreen> {
 
     if (isEditMode) {
       _selectedGradeLevel = widget.sectionToEdit!.gradeLevel;
+      _selectedFrameworkId = widget.sectionToEdit!.frameworkId;
     }
+
+    _loadFrameworks();
+  }
+
+  Future<void> _loadFrameworks() async {
+    final list = await _frameworkRepo.getFrameworks();
+    if (mounted) setState(() => _frameworks = list);
   }
 
   String _calculateCurrentSchoolYear() {
@@ -72,10 +95,6 @@ class _AddSectionScreenState extends State<AddSectionScreen> {
     );
 
     if (isValid) {
-      debugPrint(
-        '============= DEBUG: Form valid! Preparing payload... =============',
-      );
-
       final section = Section(
         id: isEditMode ? widget.sectionToEdit!.id : '',
         name: _nameController.text.trim(),
@@ -84,10 +103,12 @@ class _AddSectionScreenState extends State<AddSectionScreen> {
             ? null
             : _adviserController.text.trim(),
         schoolYearId: _syController.text.trim(),
+        frameworkId: _selectedFrameworkId,
       );
 
       debugPrint(
-        '============= DEBUG: Sending to database repository =============',
+        '============= DEBUG: Sending to database repository '
+        '(id=${section.id}, frameworkId=${section.frameworkId}) =============',
       );
 
       try {
@@ -104,6 +125,14 @@ class _AddSectionScreenState extends State<AddSectionScreen> {
         }
       } catch (e) {
         debugPrint('============= DATABASE CRASH ERROR: $e =============');
+        if (mounted) {
+          ScaffoldMessenger.of(context).showSnackBar(
+            SnackBar(
+              content: Text('Could not save: $e'),
+              backgroundColor: Colors.red.shade700,
+            ),
+          );
+        }
       }
     } else {
       debugPrint(
@@ -249,6 +278,29 @@ class _AddSectionScreenState extends State<AddSectionScreen> {
               validator: (v) => v == null || v.isEmpty
                   ? 'School year identifier is required'
                   : null,
+            ),
+            const SizedBox(height: 16),
+
+            DropdownButtonFormField<String>(
+              value: _frameworks.any((f) => f.id == _selectedFrameworkId)
+                  ? _selectedFrameworkId
+                  : null,
+              hint: const Text(
+                'Loading frameworks…',
+                style: TextStyle(fontSize: 13, color: Colors.black38),
+              ),
+              decoration: _buildInputDecoration(
+                label: 'Grading Framework',
+                icon: Icons.rule_rounded,
+              ),
+              items: _frameworks
+                  .map(
+                    (f) => DropdownMenuItem(value: f.id, child: Text(f.name)),
+                  )
+                  .toList(),
+              onChanged: (v) {
+                if (v != null) setState(() => _selectedFrameworkId = v);
+              },
             ),
             const SizedBox(height: 32),
 

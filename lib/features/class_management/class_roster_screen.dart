@@ -44,7 +44,8 @@ class ClassRosterScreen extends StatefulWidget {
 }
 
 class _ClassRosterScreenState extends State<ClassRosterScreen>
-    with SingleTickerProviderStateMixin {
+    with SingleTickerProviderStateMixin, RestorationMixin<ClassRosterScreen> {
+  final RestorableString _classRosterScreen = RestorableString('');
   final _enrollRepo = EnrollmentRepository();
   final _localAuth = LocalAuthentication();
 
@@ -52,6 +53,14 @@ class _ClassRosterScreenState extends State<ClassRosterScreen>
   bool _isLoading = true;
 
   late final TabController _tabController;
+
+  @override
+  String? get restorationId => 'class_roster_screen';
+
+  @override
+  void restoreState(RestorationBucket? oldBucket, bool initialRestore) {
+    registerForRestoration(_classRosterScreen, 'class_roster_screen');
+  }
 
   @override
   void initState() {

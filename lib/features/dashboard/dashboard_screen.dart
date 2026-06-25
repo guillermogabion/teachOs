@@ -6,16 +6,17 @@ import '../class_management/class_management_screen.dart';
 import '../student_sis/student_list_screen.dart';
 import '../attendance/attendance_records_screen.dart';
 import '../grading/gradebook_screen.dart';
-import '../assessment/assessment_builder_screen.dart';
+import '../assessment/question_bank_screen.dart';
 import '../calendar/school_calendar_screen.dart';
 import '../assignments/assignment_dashboard_screen.dart';
 import '../toolkit/random_student_picker_screen.dart';
 import '../settings/screens/backup_settings_screen.dart';
-
+import '../calendar/repository/calendar_repository.dart';
 import 'package:geolocator/geolocator.dart';
 import 'dart:convert';
 import 'package:http/http.dart' as http;
 import 'package:geocoding/geocoding.dart';
+import '../assignments/legacy_assignments_screen.dart';
 
 // ─── Brand palette ────────────────────────────────────────────────────────────
 class _Brand {
@@ -57,11 +58,16 @@ class DashboardScreen extends StatefulWidget {
   State<DashboardScreen> createState() => _DashboardScreenState();
 }
 
-class _DashboardScreenState extends State<DashboardScreen> {
+class _DashboardScreenState extends State<DashboardScreen>
+    with RestorationMixin<DashboardScreen> {
+  final RestorableString _dashboardScreen = RestorableString('');
   final _attendanceRepo = AttendanceRepository();
   int _presentCount = 0;
   int _absentCount = 0;
   bool _loading = true;
+  final _calendarRepo = CalendarRepository();
+  List<Map<String, dynamic>> _todayEvents = [];
+  bool _calendarLoading = true;
 
   DateTime _currentDate = DateTime.now();
 
@@ -73,13 +79,33 @@ class _DashboardScreenState extends State<DashboardScreen> {
   String _locationName = 'Detecting location…';
 
   @override
+  String? get restorationId => 'dashboard_screen';
+
+  @override
+  void restoreState(RestorationBucket? oldBucket, bool initialRestore) {
+    registerForRestoration(_dashboardScreen, 'dashboard_screen');
+  }
+
+  @override
   void initState() {
     super.initState();
     _fetchStats();
     _fetchRealWeather();
+    _loadTodayEvents();
   }
 
   // ── Data ───────────────────────────────────────────────────────────────────
+  Future<void> _loadTodayEvents() async {
+    final allEvents = await _calendarRepo.getGroupedEvents();
+    final todayStr = DateFormat('yyyy-MM-dd').format(DateTime.now());
+
+    if (mounted) {
+      setState(() {
+        _todayEvents = allEvents[todayStr] ?? [];
+        _calendarLoading = false;
+      });
+    }
+  }
 
   Future<void> _fetchStats() async {
     final targetDateStr = _currentDate.toIso8601String().split('T')[0];
@@ -237,8 +263,8 @@ class _DashboardScreenState extends State<DashboardScreen> {
 
   List<_QAItem> get _quickAccessItems => [
     _QAItem(
-      'Class Mgmt.',
-      'Sections',
+      'Class Management',
+      'Classes & Sections',
       Icons.co_present_rounded,
       _Brand.amberSurf,
       _Brand.amberText,
@@ -246,7 +272,7 @@ class _DashboardScreenState extends State<DashboardScreen> {
     ),
     _QAItem(
       'Students',
-      'SIS records',
+      'Student Database',
       Icons.people_alt_rounded,
       _Brand.blueSurf,
       _Brand.blueText,
@@ -262,11 +288,19 @@ class _DashboardScreenState extends State<DashboardScreen> {
     ),
     _QAItem(
       'Gradebook',
-      'Scores',
+      'Class Grades',
       Icons.menu_book_rounded,
       _Brand.purpleSurf,
       _Brand.purpleText,
       const GradebookScreen(),
+    ),
+    _QAItem(
+      'Supplementary', // or 'Legacy Tasks'
+      'Supplementary Assignments',
+      Icons.archive_outlined,
+      _Brand.graySurf,
+      _Brand.grayText,
+      const OldAssignmentScreen(), // <-- Placeholder for the destination screen
     ),
     _QAItem(
       'Assessments',
@@ -274,16 +308,16 @@ class _DashboardScreenState extends State<DashboardScreen> {
       Icons.assignment_rounded,
       _Brand.pinkSurf,
       _Brand.pinkText,
-      const AssessmentBuilderScreen(),
+      const QuestionBankScreen(),
     ),
-    _QAItem(
-      'Assignments',
-      'Hub',
-      Icons.assignment_turned_in_rounded,
-      _Brand.greenSurf,
-      _Brand.greenText,
-      const AssignmentHubScreen(),
-    ),
+    // _QAItem(
+    //   'Assignments',
+    //   'Hub',
+    //   Icons.assignment_turned_in_rounded,
+    //   _Brand.greenSurf,
+    //   _Brand.greenText,
+    //   const AssignmentHubScreen(),
+    // ),
     _QAItem(
       'Calendar',
       'Events',
@@ -308,6 +342,7 @@ class _DashboardScreenState extends State<DashboardScreen> {
       _Brand.purpleText,
       const StudentDemographicsScreen(),
     ),
+
     _QAItem(
       'Settings',
       'Backup',
@@ -353,6 +388,8 @@ class _DashboardScreenState extends State<DashboardScreen> {
               _buildDateHeader(context, dateLabel, weekday),
               const SizedBox(height: 16),
               _buildWeatherCard(),
+              const SizedBox(height: 14),
+              _buildTodayEventsCard(),
               const SizedBox(height: 14),
               _buildAttendanceMetricCard(total, percentage),
               const SizedBox(height: 24),
@@ -567,6 +604,40 @@ class _DashboardScreenState extends State<DashboardScreen> {
     );
   }
 
+  // Events today
+  Widget _buildTodayEventsCard() {
+    if (_calendarLoading) return const SizedBox.shrink();
+    if (_todayEvents.isEmpty) return const SizedBox.shrink();
+
+    return Column(
+      crossAxisAlignment: CrossAxisAlignment.start,
+      children: [
+        const Padding(
+          padding: EdgeInsets.symmetric(horizontal: 4),
+          child: Text(
+            'Today\'s Schedule',
+            style: TextStyle(fontWeight: FontWeight.bold),
+          ),
+        ),
+        const SizedBox(height: 10),
+        ..._todayEvents.map(
+          (event) => Card(
+            elevation: 0,
+            color: _Brand.tealSurf,
+            margin: const EdgeInsets.fromLTRB(0, 0, 0, 8),
+            child: ListTile(
+              title: Text(
+                event['title'],
+                style: const TextStyle(fontWeight: FontWeight.w600),
+              ),
+              subtitle: Text(event['type']),
+              dense: true,
+            ),
+          ),
+        ),
+      ],
+    );
+  }
   // ── Attendance Metric Card ─────────────────────────────────────────────────
 
   Widget _buildAttendanceMetricCard(int total, double percentage) {

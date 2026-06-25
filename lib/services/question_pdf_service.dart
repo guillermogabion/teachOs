@@ -124,84 +124,22 @@ class QuestionPdfService {
                     pw.Text('Questionnaire', style: styleSmall),
                   ],
                 ),
-                // ── Answer Sheet Header ──────────────────────────────────────────
                 pw.Container(
-                  padding: const pw.EdgeInsets.all(12),
-                  decoration: pw.BoxDecoration(
-                    border: pw.Border.all(color: _border, width: 1.5),
-                    borderRadius: pw.BorderRadius.circular(8),
-                    color: PdfColor.fromHex('F9FAFB'),
+                  padding: const pw.EdgeInsets.symmetric(
+                    horizontal: 10,
+                    vertical: 5,
                   ),
-                  child: pw.Table(
-                    columnWidths: {
-                      0: const pw.FlexColumnWidth(3),
-                      1: const pw.FlexColumnWidth(1.5),
-                      2: const pw.FlexColumnWidth(1.5),
-                    },
-                    children: [
-                      pw.TableRow(
-                        children: [
-                          pw.Padding(
-                            padding: const pw.EdgeInsets.only(
-                              right: 12,
-                              bottom: 8,
-                            ),
-                            child: _labeledLine(
-                              label: 'Name:',
-                              reg: reg,
-                              bold: bold,
-                            ),
-                          ),
-                          pw.Padding(
-                            padding: const pw.EdgeInsets.only(
-                              right: 12,
-                              bottom: 8,
-                            ),
-                            child: _labeledLine(
-                              label: 'Date:',
-                              reg: reg,
-                              bold: bold,
-                            ),
-                          ),
-                          pw.Padding(
-                            padding: const pw.EdgeInsets.only(bottom: 8),
-                            child: _labeledLine(
-                              label: 'Score:',
-                              reg: reg,
-                              bold: bold,
-                            ),
-                          ),
-                        ],
-                      ),
-                      pw.TableRow(
-                        children: [
-                          pw.Padding(
-                            padding: const pw.EdgeInsets.only(right: 12),
-                            child: _labeledLine(
-                              label: 'Subject:',
-                              reg: reg,
-                              bold: bold,
-                            ),
-                          ),
-                          pw.Padding(
-                            padding: const pw.EdgeInsets.only(right: 12),
-                            child: _labeledLine(
-                              label: 'Section:',
-                              reg: reg,
-                              bold: bold,
-                            ),
-                          ),
-                          pw.Padding(
-                            padding: const pw.EdgeInsets.only(bottom: 0),
-                            child: _labeledLine(
-                              label: 'Quarter:',
-                              reg: reg,
-                              bold: bold,
-                            ),
-                          ),
-                        ],
-                      ),
-                    ],
+                  decoration: pw.BoxDecoration(
+                    color: _tealDark,
+                    borderRadius: pw.BorderRadius.circular(5),
+                  ),
+                  child: pw.Text(
+                    'TeachOS',
+                    style: pw.TextStyle(
+                      font: bold,
+                      fontSize: 10,
+                      color: PdfColors.white,
+                    ),
                   ),
                 ),
               ],
